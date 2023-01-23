@@ -1,3 +1,18 @@
+#include "phase1.h"
+typedef struct PCB { 
+	USELOSS_Context* context, // created by USLOSS_CONTEXTInit
+				  // gets passes the procces's main
+				  // function, stack size, stack
+	int pid, // this processes slot is pid%MAXPROC 
+	char* name, 
+	int process_state, // > 10 is blocked 
+	int priority, 
+	PCB* parent, // pointer to parent process
+	PCB* children // list of children procceses
+}PCB;
+
+PCB process_table[MAXPROC];
+
 /*
  Initializes the data structure for Phase 1
  
