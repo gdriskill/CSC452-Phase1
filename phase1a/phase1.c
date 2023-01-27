@@ -1,27 +1,27 @@
 #include "phase1.h"
 typedef struct PCB { 
-	USELOSS_Context* context, // created by USLOSS_CONTEXTInit
+	USLOSS_Context context; // created by USLOSS_CONTEXTInit
 				  // gets passes the procces's main
 				  // function, stack size, stack
-	int pid, // this processes slot is pid%MAXPROC 
-	char* name, 
-	int process_state, // > 10 is blocked 
-	int priority, 
-	PCB* parent, // pointer to parent process
-	PCB* children // list of children procceses
-}PCB;
+	int pid; // this processes slot is pid%MAXPROC 
+	char* name; 
+	int process_state; // > 10 is blocked 
+	int priority; 
+	struct PCB* parent; // pointer to parent process
+	struct PCB* children; // list of children procceses
+} PCB;
 
 PCB process_table[MAXPROC];
 
 /*
- Initializes the data structure for Phase 1
+ Initializes the data structures for Phase 1
  
- Context: n/a, called before startProcesses(). See Bootstrap above.
+ Context: n/a, called before startProcesses().
  May Block: n/a
  May Context Switch: n/a
 */
-void phase1 init(void){
-
+void phase1_init(void){
+	 
 }
 
 /*
@@ -37,7 +37,10 @@ void startprocesses(void){
 
 /* 
  Creates a child process of the current process. Creates the entry in the process
- table and fills it in. does not call the dispatcher after it creates the new process.
+ table and fills it in.docker run -ti -v $(pwd):/root/phase1 ghcr.io/russ-lewis/usloss
+docker run -ti -v $(pwd):/root/phase1 ghcr.io/russ-lewis/usloss
+docker run -ti -v $(pwd):/root/phase1 ghcr.io/russ-lewis/usloss
+ does not call the dispatcher after it creates the new process.
  Instead, the testcase is  responsible for chosing when to switch to another process.
 
  Context: Process Context ONLY
@@ -59,7 +62,7 @@ void startprocesses(void){
 */
 int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, 
 		int priority){
-
+	return -1;
 }
 
 /*
@@ -80,7 +83,7 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize,
 
 */
 int join(int *status){
-
+	return -1;
 }
 
 /*
@@ -111,7 +114,7 @@ void quit(int status, int switchToPid){
 
 */
 int getpid(void){
-
+	return -1;
 }
 
 /*
@@ -132,7 +135,7 @@ void dumpProcesses(void){
  Switches to the specified process instead of using a dispatcher. 
  Temp function for part A. 
 */
-TEMP_switchTo(int newpid){
+void TEMP_switchTo(int newpid){
 
 }
 
