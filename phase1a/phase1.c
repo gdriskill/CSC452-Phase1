@@ -1,17 +1,63 @@
 #include "phase1.h"
-typedef struct PCB { 
-	USLOSS_Context context; // created by USLOSS_CONTEXTInit
-				  // gets passes the procces's main
-				  // function, stack size, stack
-	int pid; // this processes slot is pid%MAXPROC 
-	char* name; 
-	int process_state; // > 10 is blocked 
-	int priority; 
-	struct PCB* parent; // pointer to parent process
-	struct PCB* children; // list of children procceses
+#include <stdlib.h>
+
+typedef struct PCB {
+// maybe change to pointer ?
+USLOSS_Context context; // created by USLOSS_CONTEXTInit
+ // gets passes the procces's main
+ // function, stack size, stack
+int pid; // this processes slot is pid%MAXPROC
+char* name;
+int process_state; // 0 for nothing, 10 for runnable, 20 for block on join, 30 for block on device
+int priority;
+struct PCB* parent; // pointer to parent process
+struct PCB* children; // list of children procceses
+struct PCB* next_sibling; // next sibling in parent's child list
 } PCB;
 
 PCB process_table[MAXPROC];
+static int curr_pid;
+
+// Initialization functions
+void sentinel_run() {
+while (1) {
+if (phase2_check_io() == 0) {
+USLOSS_Console("<report deadlock and terminate simulation\n");
+USLOSS_WaitInt();
+}
+}
+}
+
+void testcase_wrapper() {
+int ret = testcase_main();
+if (ret != 0) {
+USLOSS_Console("some error was detected by the testcase\n");
+}
+USLOSS_Halt(ret);
+}
+
+void init_run() {
+int init_pid = fork1("sentinel", sentinel_run, NULL, USLOSS_MIN_STACK, 7);
+if (init_pid < 0) {
+USLOSS_Halt(init_pid);
+}
+
+int testcase_pid = fork1("testcase_main", testcase_wrapper, NULL, USLOSS_MIN_STACK, 3);
+if (testcase_pid < 0) {
+USLOSS_Halt(testcase_pid);
+}
+
+int* status;
+int join_return;
+while (1) {
+join_return = join(status);
+if (join_return == -2) {
+USLOSS_Halt(0);
+}
+}
+}
+
+
 
 /*
  Initializes the data structures for Phase 1
@@ -21,7 +67,33 @@ PCB process_table[MAXPROC];
  May Context Switch: n/a
 */
 void phase1_init(void){
-	 
+for(int i=0; i<MAXPROC; i++){
+PCB process;
+process.process_state = -1;
+process_table[i] = process;
+}
+// Initializing init
+PCB init_proc;
+
+USLOSS_Context* init_context;
+void* init_stack = malloc(USLOSS_MIN_STACK);
+void (*init_func) = init_run;
+USLOSS_ContextInit(init_context, init_stack, USLOSS_MIN_STACK, NULL, init_run);
+init_proc.context = *init_context;
+
+init_proc.pid = get_new_pid();
+init_proc.name = "init";
+init_proc.process_state = 0;
+init_proc.priority = 6;
+init_proc.parent = NULL;
+init_proc.children = NULL;
+process_table[init_proc.pid%MAXPROC];
+
+}
+
+int get_new_pid() {
+static int pid_counter = 1;
+return pid_counter++;
 }
 
 /*
@@ -32,10 +104,11 @@ void phase1_init(void){
  May Block: This function never returns
  May Context Switch: This function never returns
  */
-void startprocesses(void){
+void startProcesses(void){
+
 }
 
-/* 
+/*
  Creates a child process of the current process. Creates the entry in the process
  table and fills it in.docker run -ti -v $(pwd):/root/phase1 ghcr.io/russ-lewis/usloss
 docker run -ti -v $(pwd):/root/phase1 ghcr.io/russ-lewis/usloss
@@ -47,43 +120,82 @@ docker run -ti -v $(pwd):/root/phase1 ghcr.io/russ-lewis/usloss
  May Block: No
  May Context Switch: Yes
  Args:
-	name - Stored in process table, useful for debug. Must be no longer than
-		MAXNAME characters.
-	startFunc - The main() function for the child process.
-	arg - The argument to pass to startFunc(). May be NULL.
-	stackSize - The size of the stack, in bytes. Must be no less than USLOSS_MIN_STACK
-	priority - The priority of this process. Priorities 6,7 are reserved for
-		init,sentinel, so the only valid values for this call are 1-5 (inclusive)
+name - Stored in process table, useful for debug. Must be no longer than
+MAXNAME characters.
+startFunc - The main() function for the child process.
+arg - The argument to pass to startFunc(). May be NULL.
+stackSize - The size of the stack, in bytes. Must be no less than USLOSS_MIN_STACK
+priority - The priority of this process. Priorities 6,7 are reserved for
+init,sentinel, so the only valid values for this call are 1-5 (inclusive)
  Returns:
-	-2 if stackSize is less than USLOSS_MIN_STACk
-	-1 if no empty slots are in the process table, priority out of range startFunc or
-		name are NULL, name is too long
-	else, the PID of the new child process
+-2 if stackSize is less than USLOSS_MIN_STACk
+-1 if no empty slots are in the process table, priority out of range startFunc or
+name are NULL, name is too long
+else, the PID of the new child process
 */
-int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, 
-		int priority){
-	return -1;
+int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize,
+int priority)
+{
+if (stackSize < USLOSS_MIN_STACK) {
+return -2;
+}
+// TODO check name and priority
+
+
+USLOSS_Context* old_context = &process_table[getSlot(curr_pid)].context;
+int pid = get_new_pid();
+int start_slot = getSlot(pid);
+int slot = start_slot;
+while(process_table[slot].process_state!=-1){
+pid = get_new_pid();
+slot = getSlot(pid);
+if(slot==start_slot){
+return -1;
+}
+}
+
+PCB process;
+USLOSS_Context* context;
+void* stack_ptr = malloc(stackSize);
+USLOSS_ContextInit(context, stack_ptr, stackSize, NULL, startFunc);
+process.context = *context;
+process.pid = pid;
+process.name = name;
+process.process_state = 0;
+process.priority = priority;
+// pointer problem??
+process.parent = &process_table[getSlot(curr_pid)];
+process.next_sibling = process_table[getSlot(curr_pid)].children;
+process_table[slot] = process;
+// pointer problem?
+process_table[getSlot(curr_pid)].children = &process_table[slot];
+
+return pid;
+}
+
+int getSlot(int pid){
+return pid%MAXPROC;
 }
 
 /*
- Reports the status of already dead child is reported via the status pointer and the 
- PID of the process is returned. If there are no already dead children, the 
+ Reports the status of already dead child is reported via the status pointer and the
+ PID of the process is returned. If there are no already dead children, the
  simulation is terminated.
 
  Context: Process Context ONLY
  May Block: Yes
  May Context Switch: Yes
  Args:
-	status - Out pointer. Must point to an int; join() will fill it with the
-		status of the process joined-to.
+status - Out pointer. Must point to an int; join() will fill it with the
+status of the process joined-to.
  Return Value:
-	-2 : the process does not have any children (or, all children have already
-		been joined)
- 	> 0 : PID of the child joined-to
+-2 : the process does not have any children (or, all children have already
+been joined)
+  > 0 : PID of the child joined-to
 
 */
 int join(int *status){
-	return -1;
+return -1;
 }
 
 /*
@@ -93,11 +205,11 @@ int join(int *status){
  Context: Process Content ONLY
  May Block: This function never returns
  May Context Switch: Always context switches, since the current process
-	terminates.
+terminates.
  Args:
- 	status - The exit status of this process. It will be returned to the parent
-		(eventually) through join().
-	switchToPid - the PID of the process to switch to
+  status - The exit status of this process. It will be returned to the parent
+(eventually) through join().
+switchToPid - the PID of the process to switch to
 */
 void quit(int status, int switchToPid){
 
@@ -114,11 +226,11 @@ void quit(int status, int switchToPid){
 
 */
 int getpid(void){
-	return -1;
+return -1;
 }
 
 /*
- Prints out process information from process table. This includes the name, PID, 
+ Prints out process information from process table. This includes the name, PID,
  parent PID, priority and runnable status for each process.
 
  Context: Interrupt Context OK
@@ -132,11 +244,13 @@ void dumpProcesses(void){
 }
 
 /*
- Switches to the specified process instead of using a dispatcher. 
- Temp function for part A. 
+ Switches to the specified process instead of using a dispatcher.
+ Temp function for part A.
 */
 void TEMP_switchTo(int newpid){
-
+USLOSS_Context* old_context = &process_table[getSlot(curr_pid)].context;
+USLOSS_Context* new_context = &process_table[getSlot(newpid)].context;
+curr_pid = newpid;
+USLOSS_ContextSwitch(old_context, new_context);
 }
-
 
