@@ -21,18 +21,18 @@ static PCB current_process;
 
 // Initialization functions
 void sentinel_run() {
-	USLOSS_Console("In sentinel_run\n");
+	USLOSS_Console("DEBUG: In sentinel_run\n");
 
 	while (1) {
 		if (phase2_check_io() == 0) {
-			USLOSS_Console("<report deadlock and terminate simulation\n");
+			USLOSS_Console("report deadlock and terminate simulation\n");
 			USLOSS_WaitInt();
 		}
 	}	
 }
 
 void testcase_wrapper() {
-	USLOSS_Console("In testcase wrapper\n");
+	USLOSS_Console("DEBUG: In testcase wrapper\n");
 
 	int ret = testcase_main();
 	if (ret != 0) {
@@ -42,20 +42,21 @@ void testcase_wrapper() {
 }
 
 void init_run() {
-	USLOSS_Console("In init_run\n");
-
+	USLOSS_Console("DEBUG: In init_run\n");
+	USLOSS_Console("DEBUG: creating sentinel process\n");
 	int sentinel_pid = fork1("sentinel", sentinel_run, NULL, USLOSS_MIN_STACK, 7);
 	if (sentinel_pid < 0) {
 		USLOSS_Console("sentinel pid is less than zero (%d)\n", sentinel_pid);
 		USLOSS_Halt(sentinel_pid);	
 	}
-	
+	USLOSS_Console("DEBUG: creating testcaes_main\n");
 	int testcase_pid = fork1("testcase_main", testcase_wrapper, NULL, USLOSS_MIN_STACK, 3);
 	if (testcase_pid < 0) {
 		USLOSS_Console("testcase pid is less than zero (%d)\n", testcase_pid);
 		USLOSS_Halt(testcase_pid);
 	}
-
+	// maunually switch to testcase_main (section 1.2 in phase1a)
+	TEMP_switchTo(testcase_pid);
 	int* status;
 	int join_return;
 	
@@ -75,7 +76,7 @@ void init_run() {
  May Context Switch: n/a
 */
 void phase1_init(void){
-	USLOSS_Console("Setting up process table\n");
+	USLOSS_Console("DEBUG: Setting up process table\n");
 
 	for(int i=0; i<MAXPROC; i++){
 		PCB process;
@@ -83,7 +84,7 @@ void phase1_init(void){
 		process_table[i] = process;
 	}
 
-	USLOSS_Console("Initializing init\n");
+	USLOSS_Console("DEBUG: Initializing init\n");
 	// Initializing init	
 	PCB init_proc;
 
@@ -103,13 +104,12 @@ void phase1_init(void){
 	init_proc.children = NULL;
 	process_table[init_proc.pid%MAXPROC] = init_proc;
 
-	USLOSS_Console("Finished initialization\n");
+	USLOSS_Console("DEBUG: Finished initialization\n");
 
-	startProcesses();
 }
 
 int get_new_pid() {
-	USLOSS_Console("In get new pid\n");
+	USLOSS_Console("DEBUG: In get new pid\n");
 
 	static int pid_counter = 1;
 	return pid_counter++;
@@ -124,7 +124,7 @@ int get_new_pid() {
  May Context Switch: This function never returns
  */
 void startProcesses(void){
-	USLOSS_Console("In startProcesses\n");
+	USLOSS_Console("DEBUG: In startProcesses\n");
 
 	current_process = process_table[1];
 	USLOSS_Context newContext = current_process.context;
@@ -159,7 +159,7 @@ docker run -ti -v $(pwd):/root/phase1 ghcr.io/russ-lewis/usloss
 int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, 
 		int priority)
 {
-	USLOSS_Console("In fork1\n");
+	USLOSS_Console("DEBUG: In fork1\n");
 
 	if (stackSize < USLOSS_MIN_STACK) {
 		USLOSS_Console("Stack size (%d) is less than min size\n", stackSize);
@@ -181,7 +181,6 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize,
 			return -1;
 		}	
 	}
-
 	PCB process;
 	USLOSS_Context* context = (USLOSS_Context*) malloc(sizeof(USLOSS_Context));
 	void* stack_ptr = malloc(stackSize);
@@ -201,19 +200,20 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize,
 	//process_table[getSlot(curr_pid)].children = &process_table[slot];
 	current_process.children = &process_table[slot];
 
-
+	// Commented this out, in phase1a the testcase is responsible for when to
+	// switch to a new process  
 	// If new process has a higher priority than current process, switch
-
+	/*
 	if (priority > current_process.priority) {
 		USLOSS_Context oldContext = current_process.context;
 		USLOSS_ContextSwitch(&oldContext, context);
-	}
+	}*/
 
 	return pid;
 }
 
 int getSlot(int pid){
-	USLOSS_Console("In getSlot\n");
+	USLOSS_Console("DEBUG: In getSlot\n");
 
 	return pid%MAXPROC;
 }
@@ -236,7 +236,7 @@ int getSlot(int pid){
 
 */
 int join(int *status){
-	//USLOSS_Console("In join\n");
+	//USLOSS_Console("DEBUG: In join\n");
 
 	return -1;
 }
@@ -255,7 +255,7 @@ int join(int *status){
 	switchToPid - the PID of the process to switch to
 */
 void quit(int status, int switchToPid){
-	USLOSS_Console("In quit\n");
+	USLOSS_Console("DEBUG: In quit\n");
 }
 
 /*
@@ -269,7 +269,7 @@ void quit(int status, int switchToPid){
 
 */
 int getpid(void){
-	USLOSS_Console("In getpid\n");
+	USLOSS_Console("DEBUG: In getpid\n");
 
 	return current_process.pid;
 }
@@ -285,7 +285,7 @@ int getpid(void){
  Return Value: None
 */
 void dumpProcesses(void){
-	USLOSS_Console("In dumpProcesses\n");
+	USLOSS_Console("DEBUG: In dumpProcesses\n");
 }
 
 /*
@@ -293,7 +293,7 @@ void dumpProcesses(void){
  Temp function for part A. 
 */
 void TEMP_switchTo(int newpid){
-	USLOSS_Console("In TEMP_switchTo\n");
+	USLOSS_Console("DEBUG In TEMP_switchTo\n");
 
 	//USLOSS_Context* old_context = &process_table[getSlot(curr_pid)].context;
 	USLOSS_Context* old_context = &current_process.context;
