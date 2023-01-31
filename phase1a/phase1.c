@@ -99,6 +99,7 @@ void init_run() {
 */
 void phase1_init(void){
 	USLOSS_Console("DEBUG: Setting up process table\n");
+	int old_state = disable_interrupts();
 
 	for(int i=0; i<MAXPROC; i++){
 		PCB process;
@@ -128,13 +129,14 @@ void phase1_init(void){
 	init_proc.younger_sibling = NULL;
 	process_table[INIT_IDX] = init_proc;
 
+	restore_interrupts(old_state);
 	USLOSS_Console("DEBUG: Finished initialization\n");
 
 }
 
 int get_new_pid() {
 	USLOSS_Console("DEBUG: In get new pid\n");
-
+	
 	static int pid_counter = 2;
 	return pid_counter++;
 }
@@ -148,12 +150,14 @@ int get_new_pid() {
  */
 void startProcesses(void){
 	USLOSS_Console("DEBUG: In startProcesses\n");
+	int old_state = disable_interrupts();
 
 	current_process = process_table[INIT_IDX];
 	USLOSS_Context newContext = current_process.context;
 
 	current_process.process_state = PROC_STATE_RUNNABLE;
 	USLOSS_ContextSwitch(NULL, &newContext); 
+	restore_interrupts(old_state);
 }
 
 /* 
@@ -180,6 +184,8 @@ void startProcesses(void){
 */
 int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int priority)
 {
+	int old_state = disable_interrupts();
+
 	USLOSS_Console("DEBUG: In fork1\n");
 
 	if (stackSize < USLOSS_MIN_STACK) {
@@ -252,7 +258,7 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 		USLOSS_Context oldContext = current_process.context;
 		USLOSS_ContextSwitch(&oldContext, context);
 	}*/
-
+	restore_interrupts(old_state);
 	return pid;
 }
 
@@ -283,6 +289,8 @@ is terminated.
 
 */
 int join(int *status){
+	int old_state = disable_interrupts();
+
 	//USLOSS_Console("DEBUG: In join\n");
 	// Search for a terminated child
 	PCB* child = current_process.children;
@@ -301,6 +309,7 @@ int join(int *status){
 	// Checked all children, none have terminated
 	USLOSS_Console("Join Error: could not find any already dead children\n");
 	USLOSS_Halt(-2); 
+	restore_interrupts(old_state);
 	return NO_CHILDREN_RETURN;
 	
 	// INTERMEDIATE WORK!!
@@ -331,6 +340,7 @@ int join(int *status){
 */
 void quit(int status, int switchToPid){
 	USLOSS_Console("DEBUG: In quit\n");
+	int old_state = disable_interrupts();
 
 	// GRACE, TEST THIS TOO. I'M PRETTY SURE IT'S CORRECT BUT WHO KNOWS!
 	current_process.process_state = PROC_STATE_TERMINATED;
@@ -341,6 +351,8 @@ void quit(int status, int switchToPid){
 
 	current_process = process_table[getSlot(switchToPid)];
 	USLOSS_ContextSwitch(old_context_ptr, new_context_ptr);
+	
+	restore_interrupts(old_state);
 }
 
 /*
@@ -355,7 +367,6 @@ void quit(int status, int switchToPid){
 */
 int getpid(void){
 	USLOSS_Console("DEBUG: In getpid\n");
-
 	return current_process.pid;
 }
 
@@ -371,6 +382,9 @@ int getpid(void){
 */
 void dumpProcesses(void){
 	USLOSS_Console("DEBUG: In dumpProcesses\n");
+	int old_state = disable_interrupts();
+
+	restore_interrupts(old_state);
 }
 
 /*
@@ -378,6 +392,7 @@ void dumpProcesses(void){
  Temp function for part A. 
 */
 void TEMP_switchTo(int newpid){
+	int old_state = disable_interrupts();
 	USLOSS_Console("DEBUG In TEMP_switchTo\n");
 
 	USLOSS_Context* old_context = &current_process.context;
@@ -388,6 +403,7 @@ void TEMP_switchTo(int newpid){
 	current_process.process_state = PROC_STATE_RUNNABLE; 
 
 	USLOSS_ContextSwitch(old_context, new_context);
+	restore_interrupts(old_state);
 }
 
 /**
