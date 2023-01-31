@@ -37,8 +37,9 @@ typedef struct PCB {
 } PCB;
 
 PCB process_table[MAXPROC];
-//static PCB current_process;
 int current_pid;
+int (*trampolineFunc)(char* arg);
+char* trampoline_arg;
 
 // Initialization functions
 void sentinel_run() {
@@ -50,6 +51,16 @@ void sentinel_run() {
 			USLOSS_WaitInt();
 		}
 	}	
+}
+
+// need to create trampoline function to use as wrapper that gets passed
+// to ContextInit, needs to be void(*)void
+// first, will enable interrupts
+// then call the start func for a process with args 
+void trampoline(void) {
+	USLOSS_Console("DEBUG: In trampoline\n");
+	enable_interrupts();
+	trampolineFunc(trampoline_arg);
 }
 
 void testcase_wrapper() {
@@ -158,18 +169,6 @@ void startProcesses(void){
 	restore_interrupts(old_state);
 }
 
-// need to create trampoline function to use as wrapper that gets passed
-// to ContextInit, needs to be void(*)void
-// first, will enable interrupts
-// then call the start func for a process with args 
-void trampoline(void){
-
-	enable_interrupts();
-	// issue: how to get startFunc and args if this wrappers doesn't
-	// have args?
-	//int ret = (*startFunc)(args);
-}
-
 /* 
  Creates a child process of the current process. Creates the entry in the
  process table and fills it in. Does not call the dispatcher after it creates
@@ -220,7 +219,10 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	PCB process;
 	USLOSS_Context* context = (USLOSS_Context*) malloc(sizeof(USLOSS_Context));
 	void* stack_ptr = malloc(stackSize);
-	USLOSS_ContextInit(context, stack_ptr, stackSize, NULL, startFunc);
+
+	trampolineFunc = startFunc;
+	trampoline_arg = arg;
+	USLOSS_ContextInit(context, stack_ptr, stackSize, NULL, trampoline);
 	process.context = context;
 	process.stack = stack_ptr;
 	process.pid = pid;
