@@ -12,11 +12,18 @@
 
 #define INIT_IDX				0
 
+// HELPER FUNCTIONS
+int get_mode();
+int disable_interrupts();
+void restore_interrupts(int old_state);
+void enable_interrupts();
+
 typedef struct PCB { 
 	// maybe change to pointer ?
 	USLOSS_Context context; // created by USLOSS_CONTEXTInit
 				  // gets passes the procces's main
 				  // function, stack size, stack
+	void* stack;
 	int pid; // this processes slot is pid%MAXPROC 
 	char* name; 
 	int process_state; 
@@ -103,13 +110,13 @@ void phase1_init(void){
 	// Initializing init	
 	PCB init_proc;
 
-	USLOSS_Context* init_context = (USLOSS_Context*) malloc(sizeof(USLOSS_Context));
+	USLOSS_Context init_context;
 	void* init_stack = malloc(USLOSS_MIN_STACK);
 	void (*init_func) = init_run;
 
-	USLOSS_ContextInit(init_context, init_stack, USLOSS_MIN_STACK, NULL, init_run); 
-	init_proc.context = *init_context;
-
+	USLOSS_ContextInit(&init_context, init_stack, USLOSS_MIN_STACK, NULL, init_run); 
+	init_proc.context = init_context;
+	init_proc.stack = init_stack;
 	init_proc.pid = 1;
 	init_proc.name = "init";
 	init_proc.process_state = PROC_STATE_READY;
@@ -150,21 +157,26 @@ void startProcesses(void){
 }
 
 /* 
- Creates a child process of the current process. Creates the entry in the process table and fills it in. Does not call the dispatcher after it creates the new process. Instead, the testcase is  responsible for chosing when to switch to another process.
+ Creates a child process of the current process. Creates the entry in the
+ process table and fills it in. Does not call the dispatcher after it creates
+ the new process. Instead, the testcase is  responsible for chosing when to 
+ switch to another process.
 
  Context: Process Context ONLY
  May Block: No
  May Context Switch: Yes
  Args:
-	name - Stored in process table, useful for debug. Must be no longer than MAXNAME characters.
+	name - Stored in process table, useful for debug. Must be no longer than
+		 MAXNAME characters.
 	startFunc - The main() function for the child process.
 	arg - The argument to pass to startFunc(). May be NULL.
 	stackSize - The size of the stack, in bytes. Must be no less than USLOSS_MIN_STACK
-	priority - The priority of this process. Priorities 6,7 are reserved for init,sentinel, so the only valid values for this call are 1-5 (inclusive)
+	priority - The priority of this process. Priorities 6,7 are reserved for init, 
+		sentinel, so the only valid values for this call are 1-5 (inclusive)
  Returns:
 	-2 if stackSize is less than USLOSS_MIN_STACk
-	-1 if no empty slots are in the process table, priority out of range startFunc or name are NULL, name is too long
-	else, the PID of the new child process
+	-1 if no empty slots are in the process table, priority out of range startFunc 
+		or name are NULL, name is too long else, the PID of the new child process
 */
 int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int priority)
 {
@@ -192,21 +204,31 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	}
 	
 	PCB process;
-	USLOSS_Context* context = (USLOSS_Context*) malloc(sizeof(USLOSS_Context));
+	USLOSS_Context context;
 	void* stack_ptr = malloc(stackSize);
-	USLOSS_ContextInit(context, stack_ptr, stackSize, NULL, startFunc);
-	process.context = *context;
+	USLOSS_ContextInit(&context, stack_ptr, stackSize, NULL, startFunc);
+	process.context = context;
+	process.stack = stack_ptr;
 	process.pid = pid;
 	process.name = name;
 	process.process_state = PROC_STATE_READY;
 	process.priority = priority;
 	process.status = 0;
-	
+	process.children = NULL;
 	// Figuring out parents, siblings
 	// GRACE, TEST THIS BECAUSE I HAVEN'T YET!!
+	// Switched to insert new process at head becuase it's suggest in sepec
+	// and more time effiencent
+
 	process.parent = &current_process;
 	PCB* child_ptr = current_process.children;
-	if (child_ptr == NULL) {
+	if(child_ptr!=NULL){
+		process.younger_sibling = child_ptr;
+		process.older_sibling = NULL;
+		child_ptr->older_sibling = &process;
+	}
+	// old code that adds at tail
+	/*if (child_ptr == NULL) {
 		current_process.children = &process;
 		process.older_sibling = NULL;
 	} else {
@@ -217,7 +239,7 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 		process.older_sibling = child_ptr;
 	}
 	
-	process.younger_sibling = NULL;
+	process.younger_sibling = NULL;*/
 	process_table[slot] = process;
 
 	//process_table[getSlot(curr_pid)].children = &process_table[slot];
@@ -237,20 +259,23 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 int getSlot(int pid){
 	USLOSS_Console("DEBUG: In getSlot\n");
 	int slot = pid%MAXPROC;
-	if (slot == INIT_IDX) {
+	/*	if (slot == INIT_IDX) {
 		slot = (slot + 1)%MAXPROC;	// skip over INIT_IDX
-	}
+	}*/
 	return slot;
 }
 
 /*
- Reports the status of already dead child is reported via the status pointer and the PID of the process is returned. If there are no already dead children, the simulation is terminated.
+Reports the status of already dead child is reported via the status pointer and the 
+PID of the process is returned. If there are no already dead children, the simulation 
+is terminated.
 
  Context: Process Context ONLY
  May Block: Yes
  May Context Switch: Yes
  Args:
-	status - Out pointer. Must point to an int; join() will fill it with the status of the process joined-to.
+	status - Out pointer. Must point to an int; join() will fill it with the status
+	 of the process joined-to.
  Return Value:
 	-2 : the process does not have any children (or, all children have already
 		been joined)
@@ -259,7 +284,25 @@ int getSlot(int pid){
 */
 int join(int *status){
 	//USLOSS_Console("DEBUG: In join\n");
+	// Search for a terminated child
+	PCB* child = current_process.children;
+	while(child!=NULL){
+		if(child->process_state == PROC_STATE_TERMINATED){
+					child->process_state = -1;
+					free(child->stack);
+					*status = child->status;
+				return child->pid;
+		}
+		else {
+			child = child->younger_sibling;
+		}
+	}
 
+	// Checked all children, none have terminated
+	USLOSS_Console("Join Error: could not find any already dead children\n");
+	USLOSS_Halt(-2); 
+	return NO_CHILDREN_RETURN;
+	
 	// INTERMEDIATE WORK!!
 /*
 	current_process.process_state = PROC_STATE_WAITING;
@@ -275,13 +318,15 @@ int join(int *status){
 }
 
 /*
- Terminates the current process. The status for this process is stored in the process entry table for collection by parent process.
+ Terminates the current process. The status for this process is stored in the process
+ entry table for collection by parent process.
 
  Context: Process Content ONLY
  May Block: This function never returns
  May Context Switch: Always context switches, since the current process	terminates.
  Args:
- 	status - The exit status of this process. It will be returned to the parent	(eventually) through join().
+ 	status - The exit status of this process. It will be returned to the parent
+		(eventually) through join().
 	switchToPid - the PID of the process to switch to
 */
 void quit(int status, int switchToPid){
@@ -289,11 +334,10 @@ void quit(int status, int switchToPid){
 
 	// GRACE, TEST THIS TOO. I'M PRETTY SURE IT'S CORRECT BUT WHO KNOWS!
 	current_process.process_state = PROC_STATE_TERMINATED;
+	current_process.status = status;
 	
 	USLOSS_Context* old_context_ptr = &current_process.context;
 	USLOSS_Context* new_context_ptr = &process_table[getSlot(switchToPid)].context;	
-
-	current_process.status = status;
 
 	current_process = process_table[getSlot(switchToPid)];
 	USLOSS_ContextSwitch(old_context_ptr, new_context_ptr);
@@ -316,7 +360,8 @@ int getpid(void){
 }
 
 /*
- Prints out process information from process table. This includes the name, PID, parent PID, priority and runnable status for each process.
+ Prints out process information from process table. This includes the name, PID,
+ parent PID, priority and runnable status for each process.
 
  Context: Interrupt Context OK
  May Block: No
@@ -345,4 +390,45 @@ void TEMP_switchTo(int newpid){
 	USLOSS_ContextSwitch(old_context, new_context);
 }
 
+/**
+Extracts the current mode from the PSR
+Returns 1 if it is kernel mode, 0 if it is in user mode
+*/
+int get_mode(){
+	unsigned int PSR =  USLOSS_PsrGet();
+	return PSR%2;
+}
 
+int disable_interrupts(){
+	unsigned int PSR =  USLOSS_PsrGet();
+	// check if old PSR state had interrupts enabled 
+	int old_state;
+	// AND with 00000010 to get 2nd bit
+	if((PSR&2)>0){
+		old_state = 1;
+	}
+	else{
+		old_state = 0;
+	}
+	// AND with 11111101 to change 2 bit to 0
+	USLOSS_PsrSet(PSR&253);	
+	return old_state;
+}
+
+void restore_interrupts(int old_state){
+        unsigned int PSR =  USLOSS_PsrGet(); 
+        if(old_state>0){
+		// OR with 11111101 to change 2 bit to 1
+        	USLOSS_PsrSet(PSR|253);
+	}
+	else{
+		// AND with 11111101 to change 2 bit to 0
+        	USLOSS_PsrSet(PSR&253);
+	}
+}
+
+void enable_interrupts(){
+        unsigned int PSR =  USLOSS_PsrGet();
+        // AND with 11111101 to change 2 bit to 0
+	USLOSS_PsrSet(PSR&253);
+}
