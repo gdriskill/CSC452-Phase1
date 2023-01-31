@@ -110,12 +110,12 @@ void phase1_init(void){
 	// Initializing init	
 	PCB init_proc;
 
-	USLOSS_Context init_context;
+	USLOSS_Context* init_context = (USLOSS_Context*) malloc(sizeof(USLOSS_Context));
 	void* init_stack = malloc(USLOSS_MIN_STACK);
 	void (*init_func) = init_run;
 
-	USLOSS_ContextInit(&init_context, init_stack, USLOSS_MIN_STACK, NULL, init_run); 
-	init_proc.context = init_context;
+	USLOSS_ContextInit(init_context, init_stack, USLOSS_MIN_STACK, NULL, init_run); 
+	init_proc.context = *init_context;
 	init_proc.stack = init_stack;
 	init_proc.pid = 1;
 	init_proc.name = "init";
@@ -204,10 +204,10 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	}
 	
 	PCB process;
-	USLOSS_Context context;
+	USLOSS_Context* context = (USLOSS_Context*) malloc(sizeof(USLOSS_Context));	
 	void* stack_ptr = malloc(stackSize);
-	USLOSS_ContextInit(&context, stack_ptr, stackSize, NULL, startFunc);
-	process.context = context;
+	USLOSS_ContextInit(context, stack_ptr, stackSize, NULL, startFunc);
+	process.context = *context;
 	process.stack = stack_ptr;
 	process.pid = pid;
 	process.name = name;
@@ -384,7 +384,7 @@ void TEMP_switchTo(int newpid){
 	current_process.process_state = PROC_STATE_WAITING;
 
 	current_process = process_table[getSlot(newpid)];  
-	USLOSS_Context* new_context = &current_process.context;
+	USLOSS_Context* new_context = &process_table[getSlot(newpid)].context;
 	current_process.process_state = PROC_STATE_RUNNABLE; 
 
 	USLOSS_ContextSwitch(old_context, new_context);
