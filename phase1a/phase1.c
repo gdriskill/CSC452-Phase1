@@ -383,7 +383,28 @@ int getpid(void){
 void dumpProcesses(void){
 	USLOSS_Console("DEBUG: In dumpProcesses\n");
 	int old_state = disable_interrupts();
+	USLOSS_Console(" PID  PPID  NAME              PRIORITY  STATE\n");
 
+    	for (int i=0; i<MAXPROC; i++)
+    	{
+        	PCB *slot = &process_table[i];
+      		if (slot->process_state == -1)
+            		continue;
+
+       	 	int ppid = (slot->parent == NULL) ? 0 : slot->parent->pid;
+        	USLOSS_Console("%4d  %4d  %-17s %-10d", slot->pid, ppid, slot->name, slot->priority);
+
+        if (slot->process_state == PROC_STATE_TERMINATED)
+            USLOSS_Console("Terminated(%d)\n", slot->status);
+        else if (slot->process_state == PROC_STATE_RUNNABLE)
+            USLOSS_Console("Running\n");
+        else if (slot->process_state == PROC_STATE_WAITING)
+            USLOSS_Console("Waiting\n");
+        else if (slot->process_state != 0)
+            USLOSS_Console("Blocked(%d)\n", slot->process_state);
+        else
+            USLOSS_Console("Ready/Runnable\n");
+    }
 	restore_interrupts(old_state);
 }
 
