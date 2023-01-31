@@ -37,6 +37,7 @@ typedef struct PCB {
 
 PCB process_table[MAXPROC];
 static PCB current_process;
+int current_pid;
 
 // Initialization functions
 void sentinel_run() {
@@ -52,7 +53,7 @@ void sentinel_run() {
 
 void testcase_wrapper() {
 	USLOSS_Console("DEBUG: In testcase wrapper\n");
-
+	enable_interrupts();
 	int ret = testcase_main();
 	if (ret != 0) {
 		USLOSS_Console("some error was detected by the testcase\n");
@@ -68,14 +69,14 @@ void init_run() {
 		USLOSS_Console("sentinel pid is less than zero (%d)\n", sentinel_pid);
 		USLOSS_Halt(sentinel_pid);	
 	}
-	
+	dumpProcesses();	
 	USLOSS_Console("DEBUG: creating testcaes_main\n");
 	int testcase_pid = fork1("testcase_main", testcase_wrapper, NULL, USLOSS_MIN_STACK, 3);
 	if (testcase_pid < 0) {
 		USLOSS_Console("testcase pid is less than zero (%d)\n", testcase_pid);
 		USLOSS_Halt(testcase_pid);
 	}
-	
+	dumpProcesses();
 	// maunually switch to testcase_main (section 1.2 in phase1a)
 	TEMP_switchTo(testcase_pid);
 	int* status;
@@ -111,12 +112,13 @@ void phase1_init(void){
 	// Initializing init	
 	PCB init_proc;
 
-	USLOSS_Context* init_context = (USLOSS_Context*) malloc(sizeof(USLOSS_Context));
+	//USLOSS_Context* init_context = (USLOSS_Context*) malloc(sizeof(USLOSS_Context));
+	USLOSS_Context init_context;
 	void* init_stack = malloc(USLOSS_MIN_STACK);
 	void (*init_func) = init_run;
 
-	USLOSS_ContextInit(init_context, init_stack, USLOSS_MIN_STACK, NULL, init_run); 
-	init_proc.context = *init_context;
+	USLOSS_ContextInit(&init_context, init_stack, USLOSS_MIN_STACK, NULL, init_run); 
+	init_proc.context = init_context;
 	init_proc.stack = init_stack;
 	init_proc.pid = 1;
 	init_proc.name = "init";
@@ -153,11 +155,24 @@ void startProcesses(void){
 	int old_state = disable_interrupts();
 
 	current_process = process_table[INIT_IDX];
+	current_pid = INIT_IDX;
 	USLOSS_Context newContext = current_process.context;
 
 	current_process.process_state = PROC_STATE_RUNNABLE;
 	USLOSS_ContextSwitch(NULL, &newContext); 
 	restore_interrupts(old_state);
+}
+
+// need to create trampoline function to use as wrapper that gets passed
+// to ContextInit, needs to be void(*)void
+// first, will enable interrupts
+// then call the start func for a process with args 
+void trampoline(void){
+
+	enable_interrupts;
+	// issue: how to get startFunc and args if this wrappers doesn't
+	// have args?
+	//int ret = (*startFunc)(args);
 }
 
 /* 
@@ -185,9 +200,10 @@ void startProcesses(void){
 int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int priority)
 {
 	int old_state = disable_interrupts();
-
-	USLOSS_Console("DEBUG: In fork1\n");
-
+	
+	USLOSS_Console("DEBUG: In fork1 %s\n", name);
+	
+	dumpProcesses();
 	if (stackSize < USLOSS_MIN_STACK) {
 		USLOSS_Console("Stack size (%d) is less than min size\n", stackSize);
 		return STACK_SIZE_TOO_SMALL_ERROR;
@@ -195,8 +211,6 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	// TODO check name and priority
 	
 	
-	//USLOSS_Context* old_context = &process_table[getSlot(curr_pid)].context;
-	USLOSS_Context* old_context = &current_process.context;
 	int pid = get_new_pid();
 	int start_slot = getSlot(pid);
 	int slot = start_slot;
@@ -210,10 +224,10 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	}
 	
 	PCB process;
-	USLOSS_Context* context = (USLOSS_Context*) malloc(sizeof(USLOSS_Context));	
+	USLOSS_Context context;
 	void* stack_ptr = malloc(stackSize);
-	USLOSS_ContextInit(context, stack_ptr, stackSize, NULL, startFunc);
-	process.context = *context;
+	USLOSS_ContextInit(&context, stack_ptr, stackSize, NULL, startFunc);
+	process.context = context;
 	process.stack = stack_ptr;
 	process.pid = pid;
 	process.name = name;
@@ -258,6 +272,8 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 		USLOSS_Context oldContext = current_process.context;
 		USLOSS_ContextSwitch(&oldContext, context);
 	}*/
+	USLOSS_Console("after fork: \n");
+	dumpProcesses();
 	restore_interrupts(old_state);
 	return pid;
 }
@@ -341,7 +357,7 @@ int join(int *status){
 void quit(int status, int switchToPid){
 	USLOSS_Console("DEBUG: In quit\n");
 	int old_state = disable_interrupts();
-
+	dumpProcesses();
 	// GRACE, TEST THIS TOO. I'M PRETTY SURE IT'S CORRECT BUT WHO KNOWS!
 	current_process.process_state = PROC_STATE_TERMINATED;
 	current_process.status = status;
@@ -351,7 +367,7 @@ void quit(int status, int switchToPid){
 
 	current_process = process_table[getSlot(switchToPid)];
 	USLOSS_ContextSwitch(old_context_ptr, new_context_ptr);
-	
+	dumpProcesses();
 	restore_interrupts(old_state);
 }
 
@@ -397,13 +413,13 @@ void dumpProcesses(void){
         if (slot->process_state == PROC_STATE_TERMINATED)
             USLOSS_Console("Terminated(%d)\n", slot->status);
         else if (slot->process_state == PROC_STATE_RUNNABLE)
-            USLOSS_Console("Running\n");
+            USLOSS_Console("Running (%d)\n", slot->process_state);
         else if (slot->process_state == PROC_STATE_WAITING)
             USLOSS_Console("Waiting\n");
         else if (slot->process_state != 0)
             USLOSS_Console("Blocked(%d)\n", slot->process_state);
         else
-            USLOSS_Console("Ready/Runnable\n");
+            USLOSS_Console("Ready/Runnable (%d)\n", slot->process_state);
     }
 	restore_interrupts(old_state);
 }
@@ -415,15 +431,17 @@ void dumpProcesses(void){
 void TEMP_switchTo(int newpid){
 	int old_state = disable_interrupts();
 	USLOSS_Console("DEBUG In TEMP_switchTo\n");
+	dumpProcesses();	
+	//USLOSS_Context old_context = current_process.context;
+	//current_process.process_state = PROC_STATE_READY;;
+	USLOSS_Context old_context = process_table[getSlot(current_pid)].context;
+	process_table[getSlot(current_pid)].process_state = PROC_STATE_READY;
 
-	USLOSS_Context* old_context = &current_process.context;
-	current_process.process_state = PROC_STATE_WAITING;
-
-	current_process = process_table[getSlot(newpid)];  
-	USLOSS_Context* new_context = &process_table[getSlot(newpid)].context;
-	current_process.process_state = PROC_STATE_RUNNABLE; 
-
-	USLOSS_ContextSwitch(old_context, new_context);
+	USLOSS_Context new_context = process_table[getSlot(newpid)].context;
+	process_table[getSlot(newpid)].process_state = PROC_STATE_RUNNABLE;;
+	current_pid = newpid;
+	dumpProcesses();
+	USLOSS_ContextSwitch(&old_context, &new_context);
 	restore_interrupts(old_state);
 }
 
