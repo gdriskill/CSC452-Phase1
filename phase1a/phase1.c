@@ -19,8 +19,9 @@ int disable_interrupts();
 void restore_interrupts(int old_state);
 void enable_interrupts();
 
-typedef struct PCB { 
-	// maybe change to pointer ?
+typedef struct PCB {
+	int (*init_func)(char* arg);
+	char* init_arg;	 
 	USLOSS_Context* context; // created by USLOSS_CONTEXTInit
 				  // gets passes the procces's main
 				  // function, stack size, stack
@@ -38,8 +39,7 @@ typedef struct PCB {
 
 PCB process_table[MAXPROC];
 int current_pid;
-int (*trampolineFunc)(char* arg);
-char* trampoline_arg;
+int init_pid;
 
 // Initialization functions
 void sentinel_run() {
@@ -60,7 +60,10 @@ void sentinel_run() {
 void trampoline(void) {
 	USLOSS_Console("DEBUG: In trampoline\n");
 	enable_interrupts();
-	trampolineFunc(trampoline_arg);
+	
+	int (*init_func)(char* arg) = process_table[getSlot(init_pid)].init_func;
+	char* init_arg = process_table[getSlot(init_pid)].init_arg;
+	init_func(init_arg);
 }
 
 void testcase_wrapper() {
@@ -129,9 +132,8 @@ void phase1_init(void){
 
 	USLOSS_Context* init_context = (USLOSS_Context*) malloc(sizeof(USLOSS_Context));
 	void* init_stack = malloc(USLOSS_MIN_STACK);
-	void (*init_func) = init_run;
-
-	USLOSS_ContextInit(init_context, init_stack, USLOSS_MIN_STACK, NULL, init_run); 
+	init_proc.init_func = init_run;
+	
 	init_proc.context = init_context;
 	init_proc.stack = init_stack;
 	init_proc.pid = 1;
@@ -144,7 +146,9 @@ void phase1_init(void){
 	init_proc.older_sibling = NULL;
 	init_proc.younger_sibling = NULL;
 	process_table[INIT_IDX] = init_proc;
-
+	
+	USLOSS_ContextInit(init_proc.context, init_stack, USLOSS_MIN_STACK, NULL, init_proc.init_func); 
+	
 	restore_interrupts(old_state);
 	USLOSS_Console("DEBUG: Finished initialization\n");
 
@@ -220,9 +224,8 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	USLOSS_Context* context = (USLOSS_Context*) malloc(sizeof(USLOSS_Context));
 	void* stack_ptr = malloc(stackSize);
 
-	trampolineFunc = startFunc;
-	trampoline_arg = arg;
-	USLOSS_ContextInit(context, stack_ptr, stackSize, NULL, trampoline);
+	process.init_func = startFunc;
+	process.init_arg = arg;
 	process.context = context;
 	process.stack = stack_ptr;
 	process.pid = pid;
@@ -242,31 +245,12 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 		child_ptr->older_sibling = &process;
 	} 
 
-	// old code that adds at tail
-	/*if (child_ptr == NULL) {
-		current_process.children = &process;
-		process.older_sibling = NULL;
-	} else {
-		while (child_ptr->younger_sibling != NULL) {
-			child_ptr = child_ptr->younger_sibling;
-		}
-		child_ptr->younger_sibling = &process;
-		process.older_sibling = child_ptr;
-	}
-	
-	process.younger_sibling = NULL;*/
 	process_table[slot] = process;
+	init_pid = process.pid;
+	USLOSS_ContextInit(process.context, stack_ptr, stackSize, NULL, trampoline);
 
-	//process_table[getSlot(curr_pid)].children = &process_table[slot];
 	process_table[getSlot(current_pid)].children = &process_table[slot];
 
-	// Commented this out, in phase1a the testcase is responsible for when to switch to a new process  
-	// If new process has a higher priority than current process, switch
-	/*
-	if (priority > current_process.priority) {
-		USLOSS_Context oldContext = current_process.context;
-		USLOSS_ContextSwitch(&oldContext, context);
-	}*/
 	USLOSS_Console("after fork: \n");
 	dumpProcesses();
 	restore_interrupts(old_state);
