@@ -389,6 +389,8 @@ void quit(int status, int switchToPid){
 	
 	mmu_quit(current_pid);
 	current_pid = switchToPid;
+	process_table[getSlot(current_pid)].process_state = PROC_STATE_RUNNING;
+	mmu_flush();
 	USLOSS_ContextSwitch(old_context, new_context);
 	//dumpProcesses();
 	restore_interrupts(old_state);
