@@ -118,6 +118,10 @@ void init_run() {
 */
 void phase1_init(void){
 	//USLOSS_Console("DEBUG: Setting up process table\n");
+	if(get_mode()!=1){
+		USLOSS_Console("ERROR: Someone attempted to call phase1_init while in user mode!\n");
+		USLOSS_Halt(1);
+	}
 	int old_state = disable_interrupts();
 
 	for(int i=0; i<MAXPROC; i++){
@@ -163,6 +167,10 @@ void phase1_init(void){
  */
 void startProcesses(void){
 	//USLOSS_Console("DEBUG: In startProcesses\n");
+	if(get_mode()!=1){
+		USLOSS_Console("ERROR: Someone attempted to call phase1_init while in user mode!\n");
+                USLOSS_Halt(1);
+        }
 	int old_state = disable_interrupts();
 
 	current_pid = 1;
@@ -195,8 +203,11 @@ void startProcesses(void){
 	-1 if no empty slots are in the process table, priority out of range startFunc 
 		or name are NULL, name is too long else, the PID of the new child process
 */
-int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int priority)
-{
+int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int priority){
+	if(get_mode()!=1){
+		USLOSS_Console("ERORR: Someone attempted to call fork1 while in user mode!\n");
+		USLOSS_Halt(1);
+	}
 	int old_state = disable_interrupts();
 	
 	//USLOSS_Console("DEBUG: In fork1 %s\n", name);
@@ -262,10 +273,13 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 
 int get_new_pid() {
 	//USLOSS_Console("DEBUG: In get new pid\n");
+	if(get_mode()!=1){
+		USLOSS_Console("ERORR: Someone attempted to call fork1 while in user mode!\n");
+		USLOSS_Halt(1);
+	}	
 	static int pid_counter = 2;
 	return pid_counter++;
 }
-
 
 int getSlot(int pid){
 	//USLOSS_Console("DEBUG: In getSlot\n");
@@ -293,6 +307,10 @@ is terminated.
 
 */
 int join(int *status){
+	if(get_mode()!=1){
+		USLOSS_Console("ERORR: Someone attempted to call join while in user mode!\n");
+		USLOSS_Halt(1);
+	}
 	int old_state = disable_interrupts();
 
 	//USLOSS_Console("DEBUG: In join\n");
@@ -341,6 +359,10 @@ int join(int *status){
 */
 void quit(int status, int switchToPid){
 	//USLOSS_Console("DEBUG: In quit. Switching to PID (%d)\n", switchToPid);
+	if(get_mode() != 1){
+		USLOSS_Console("ERORR: Someone attempted to call quit while in user mode!\n");
+		USLOSS_Halt(1);
+	}
 	int old_state = disable_interrupts();
 	//dumpProcesses();
 	
@@ -368,6 +390,10 @@ void quit(int status, int switchToPid){
 */
 int getpid(void){
 	//USLOSS_Console("DEBUG: In getpid\n");
+	if(get_mode()!=1){
+		USLOSS_Console("ERORR: Someone attempted to call getpid while in user mode!\n");
+		USLOSS_Halt(1);
+	}
 	return current_pid;
 }
 
@@ -383,6 +409,10 @@ int getpid(void){
 */
 void dumpProcesses(void){
 	//USLOSS_Console("DEBUG: In dumpProcesses\n");
+	if(get_mode()!=1){
+		USLOSS_Console("ERORR: Someone attempted to call dumpProcesses while in user mode!\n");
+		USLOSS_Halt(1);
+	}
 	int old_state = disable_interrupts();
 	USLOSS_Console(" PID  PPID  NAME              PRIORITY  STATE\n");
 
@@ -416,6 +446,10 @@ void dumpProcesses(void){
  Temp function for part A. 
 */
 void TEMP_switchTo(int newpid){
+	if(get_mode()!=1){
+		USLOSS_Console("ERORR: Someone attempted to call TEMP_switchTo while in user mode!\n");
+		USLOSS_Halt(1);
+	}
 	int old_state = disable_interrupts();
 	//USLOSS_Console("DEBUG In TEMP_switchTo\n");
 	//dumpProcesses();	
@@ -436,40 +470,29 @@ Extracts the current mode from the PSR
 Returns 1 if it is kernel mode, 0 if it is in user mode
 */
 int get_mode(){
-	unsigned int PSR =  USLOSS_PsrGet();
-	return PSR%2;
+	return (USLOSS_PSR_CURRENT_MODE & USLOSS_PsrGet());
 }
 
 int disable_interrupts(){
-	unsigned int PSR =  USLOSS_PsrGet();
-	// check if old PSR state had interrupts enabled 
-	int old_state;
-	// AND with 00000010 to get 2nd bit
-	if((PSR&2)>0){
-		old_state = 1;
-	}
-	else{
-		old_state = 0;
-	}
-	// AND with 11111101 to change 2 bit to 0
-	USLOSS_PsrSet(PSR&253);	
+	int old_state = USLOSS_PSR_CURRENT_INT;
+	USLOSS_PsrSet(USLOSS_PsrGet() & ~USLOSS_PSR_CURRENT_INT);	
 	return old_state;
 }
 
 void restore_interrupts(int old_state){
-	unsigned int PSR =  USLOSS_PsrGet(); 
+	int result;
 	if(old_state>0){
-		// OR with 11111101 to change 2 bit to 1
-		USLOSS_PsrSet(PSR|253);
+		result = USLOSS_PsrSet(USLOSS_PsrGet() | USLOSS_PSR_CURRENT_INT);
 	}
 	else{
-		// AND with 11111101 to change 2 bit to 0
-		USLOSS_PsrSet(PSR&253);
+		result = USLOSS_PsrSet(USLOSS_PsrGet() & ~USLOSS_PSR_CURRENT_INT);
 	}
+	if(result!=USLOSS_DEV_OK)
+                USLOSS_Console("ERROR: Could not set PSR to restore interrupts.\n");
 }
 
 void enable_interrupts(){
-	unsigned int PSR =  USLOSS_PsrGet();
-	// AND with 11111101 to change 2 bit to 0
-	USLOSS_PsrSet(PSR&253);
+	int result = USLOSS_PsrSet(USLOSS_PsrGet() | USLOSS_PSR_CURRENT_INT);
+	if(result!=USLOSS_DEV_OK)
+		USLOSS_Console("ERROR: Could not set PSR to enable interrupts.\n");
 }
