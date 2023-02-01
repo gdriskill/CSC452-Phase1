@@ -219,7 +219,18 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 		USLOSS_Console("Stack size (%d) is less than min size\n", stackSize);
 		return STACK_SIZE_TOO_SMALL_ERROR;
 	}
-	// TODO check name and priority
+	if(name==NULL){
+                return -1;
+        }
+	if(strlen(name)>MAXNAME){
+		return -1;
+	}
+	if(startFunc==NULL){
+		return -1;
+	}
+	if((priority >5 || priority<1)&&strcmp(name, "sentinel")!=0){
+		return -1;
+	}
 	
 	int pid = get_new_pid();
 	int start_slot = getSlot(pid);
