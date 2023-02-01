@@ -1,5 +1,6 @@
 #include "phase1.h"
 #include <stdlib.h>
+#include <strings.h>
 
 #define PROC_STATE_EMPTY		-1
 #define PROC_STATE_RUNNING		0
@@ -177,6 +178,7 @@ void startProcesses(void){
 	USLOSS_Context* newContext = process_table[getSlot(current_pid)].context;
 
 	process_table[getSlot(current_pid)].process_state = PROC_STATE_RUNNING;
+	mmu_flush();
 	USLOSS_ContextSwitch(NULL, newContext); 
 	restore_interrupts(old_state);
 }
@@ -264,7 +266,9 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	USLOSS_ContextInit(process.context, stack_ptr, stackSize, NULL, trampoline);
 
 	process_table[getSlot(current_pid)].children = &process_table[slot];
-
+	if(strcmp(name, "sentinel")!=0){
+		mmu_init_proc(pid);
+	}
 	//USLOSS_Console("after fork: \n");
 	//dumpProcesses();
 	restore_interrupts(old_state);
@@ -371,7 +375,8 @@ void quit(int status, int switchToPid){
 	
 	USLOSS_Context* old_context = process_table[getSlot(current_pid)].context;
 	USLOSS_Context* new_context = process_table[getSlot(switchToPid)].context;	
-
+	
+	mmu_quit(current_pid);
 	current_pid = switchToPid;
 	USLOSS_ContextSwitch(old_context, new_context);
 	//dumpProcesses();
@@ -461,6 +466,7 @@ void TEMP_switchTo(int newpid){
 	process_table[getSlot(newpid)].process_state = PROC_STATE_RUNNING;
 	current_pid = newpid;
 	//dumpProcesses();
+	mmu_flush();
 	USLOSS_ContextSwitch(old_context, new_context);
 	restore_interrupts(old_state);
 }
