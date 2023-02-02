@@ -113,10 +113,6 @@ int testcase_wrapper(char* args) {
  * join its children.
  */
 void init_run() {
-	phase2_start_service_processes();
-	phase3_start_service_processes();
-	phase4_start_service_processes();
-	phase5_start_service_processes();
 
 	int sentinel_pid = fork1("sentinel", sentinel_run, NULL, USLOSS_MIN_STACK, 7);
 	if (sentinel_pid < 0) {
@@ -158,6 +154,10 @@ void phase1_init(void){
 	}
 	int old_state = disable_interrupts();
 	USLOSS_IntVec[USLOSS_CLOCK_INT] = clock_handler;
+	phase2_start_service_processes();
+	phase3_start_service_processes();
+	phase4_start_service_processes();
+	phase5_start_service_processes();
 	for(int i=0; i<MAXPROC; i++){
 		PCB process;
 		process.process_state = PROC_STATE_EMPTY;
