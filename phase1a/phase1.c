@@ -1,4 +1,16 @@
+/*
+File name: phase1.c
+Authors: Chris Macholtz and Grace Driskill
+Assignment: Phase 1 - Process Control - Milestone 1a
+Couse: CSC 452 Spring 2023
+Purpose: Implements the fundamental process control features of an operating system 
+	kernel. This includes bootstrapping the starting processes, forking new
+	processes, quitting processes and joinning processes. The functions implemented
+	are defined in the header file phase1.h.
+	This program uses the USLOSS library to simulate a single computer system.
+*/
 #include "phase1.h"
+#include "usloss.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -45,24 +57,29 @@ PCB process_table[MAXPROC];
 int current_pid;
 int init_pid;
 
-// Initialization functions
+// Initialization functions 
+/**
+ * Start function for the sentinel process. Runs an infinte
+ * loop to check for deadlock.
+ * Ignores the input and doesn't ever run an int. The parameter
+ * and return type is to match the necessary function pointer
+ * type for fork1.
+ */
 int sentinel_run(char* args) {
-	//USLOSS_Console("DEBUG: In sentinel_run\n");
-
 	while (1) {
 		if (phase2_check_io() == 0) {
-			USLOSS_Console("report deadlock and terminate simulation\n");
+			USLOSS_Console("Report deadlock and terminate simulation\n");
 			USLOSS_WaitInt();
 		}
 	}	
 }
 
-// need to create trampoline function to use as wrapper that gets passed
-// to ContextInit, needs to be void(*)void
-// first, will enable interrupts
-// then call the start func for a process with args 
+/**
+ * Wrapper/ trampoline function for processes' start function.
+ * First, enables interrupts. Then calls the start function with
+ * the necessary args for the current process. 
+ */
 void trampoline(void) {
-	//USLOSS_Console("DEBUG: In trampoline\n");
 	enable_interrupts();
 	
 	int (*init_func)(char* arg) = process_table[getSlot(init_pid)].init_func;
@@ -70,41 +87,49 @@ void trampoline(void) {
 	init_func(init_arg);
 }
 
+/**
+ * Wrapper for testcase_main. Starts testcase_main(). When the
+ * testcase_main function returns, halts the simulation.
+ * Ignore the args and always returns 0. The parameter
+ * and return type is to match the necessary function pointer
+ * type for fork1.
+ */
 int testcase_wrapper(char* args) {
-	//USLOSS_Console("DEBUG: In testcase wrapper\n");
 	enable_interrupts();
 	int ret = testcase_main();
 	if (ret != 0) {
-		USLOSS_Console("some error was detected by the testcase\n");
+		USLOSS_Console("Some error was detected by the testcase\n");
 	}
 	USLOSS_Console("Phase 1B TEMPORARY HACK: testcase_main() returned, simulation will now halt.\n");	
 	USLOSS_Halt(ret); 
-	return ret;
+	return 0;
 }
 
+/**
+ * Start function for the init process. First, starts the service
+ * processes for the other phases. Then forks to create the sentinel
+ * and testcase_main process. Performs a contextswitch to start
+ * testcase_main. After the bootstrapping, enters a loop to continously
+ * join its children.
+ */
 void init_run() {
-	//USLOSS_Console("DEBUG: In init_run\n");
-	//USLOSS_Console("DEBUG: creating sentinel process\n");
 	phase2_start_service_processes();
 	phase3_start_service_processes();
 	phase4_start_service_processes();
 	phase5_start_service_processes();
+
 	int sentinel_pid = fork1("sentinel", sentinel_run, NULL, USLOSS_MIN_STACK, 7);
 	if (sentinel_pid < 0) {
 		USLOSS_Console("sentinel pid is less than zero (%d)\n", sentinel_pid);
 		USLOSS_Halt(sentinel_pid);	
 	}
 
-	//dumpProcesses();	
-	//USLOSS_Console("DEBUG: creating testcaes_main\n");
 	int testcase_pid = fork1("testcase_main", testcase_wrapper, NULL, USLOSS_MIN_STACK, 3);
 	if (testcase_pid < 0) {
 		USLOSS_Console("testcase pid is less than zero (%d)\n", testcase_pid);
 		USLOSS_Halt(testcase_pid);
 	}
 
-	//dumpProcesses();
-	// maunually switch to testcase_main (section 1.2 in phase1a)
 	USLOSS_Console("Phase 1B TEMPORARY HACK: init() manually switching to testcase_main() after using fork1() to create it.\n");
 	TEMP_switchTo(testcase_pid);
 	int status;
@@ -127,7 +152,6 @@ void init_run() {
  May Context Switch: n/a
 */
 void phase1_init(void){
-	//USLOSS_Console("DEBUG: Setting up process table\n");
 	if(get_mode()!=1){
 		USLOSS_Console("ERROR: Someone attempted to call phase1_init while in user mode!\n");
 		USLOSS_Halt(1);
@@ -146,7 +170,6 @@ void phase1_init(void){
 	USLOSS_Context init_context;
 	void* init_stack = malloc(USLOSS_MIN_STACK);	
 	USLOSS_ContextInit(&init_context, init_stack, USLOSS_MIN_STACK, NULL, init_run);
-	//init_proc.init_func = init_run;
 	init_proc.context = init_context;
 	init_proc.stack = init_stack;
 	init_proc.pid = 1;
@@ -161,8 +184,6 @@ void phase1_init(void){
 	process_table[INIT_IDX] = init_proc;
 	
 	restore_interrupts(old_state);
-	//USLOSS_Console("DEBUG: Finished initialization\n");
-
 }
 
 /*
@@ -173,7 +194,6 @@ void phase1_init(void){
  May Context Switch: This function never returns
  */
 void startProcesses(void){
-	//USLOSS_Console("DEBUG: In startProcesses\n");
 	if(get_mode()!=1){
 		USLOSS_Console("ERROR: Someone attempted to call phase1_init while in user mode!\n");
                 USLOSS_Halt(1);
@@ -181,8 +201,6 @@ void startProcesses(void){
 	int old_state = disable_interrupts();
 
 	current_pid = 1;
-	//USLOSS_Context newContext = process_table[getSlot(current_pid)].context;
-
 	process_table[getSlot(current_pid)].process_state = PROC_STATE_RUNNING;
 	mmu_flush();
 	USLOSS_ContextSwitch(NULL, &process_table[getSlot(current_pid)].context); 
@@ -218,9 +236,6 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	}
 	int old_state = disable_interrupts();
 	
-	//USLOSS_Console("DEBUG: In fork1 %s\n", name);
-	
-	//dumpProcesses();
 	if (stackSize < USLOSS_MIN_STACK) {
 		return STACK_SIZE_TOO_SMALL_ERROR;
 	}
@@ -237,6 +252,7 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 		return -1;
 	}
 	
+	// Find next pid that's associated with an open slot
 	int pid = get_new_pid();
 	int start_slot = getSlot(pid);
 	int slot = start_slot;
@@ -263,10 +279,9 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	process.priority = priority;
 	process.status = 0;
 	process.children = NULL;
-	// Switched to insert new process at head becuase it's suggest in sepec
-	// and more time effiencent
-
 	process.parent = &process_table[getSlot(current_pid)];
+
+	// Insert the new processes into parent's children list
 	PCB* child_ptr = process_table[getSlot(current_pid)].children;
 	if(child_ptr!=NULL){
 		process.younger_sibling = child_ptr;
@@ -284,28 +299,8 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	if(strcmp(name, "sentinel")!=0){
 		mmu_init_proc(pid);
 	}
-	//USLOSS_Console("after fork: \n");
-	//dumpProcesses();
 	restore_interrupts(old_state);
 	return pid;
-}
-
-int get_new_pid() {
-	//USLOSS_Console("DEBUG: In get new pid\n");
-	if(get_mode()!=1){
-		USLOSS_Console("ERROR: Someone attempted to call get_new_pid while in user mode!\n");
-		USLOSS_Halt(1);
-	}	
-	static int pid_counter = 2;
-	return pid_counter++;
-}
-
-int getSlot(int pid){
-	//USLOSS_Console("DEBUG: In getSlot\n");
-	int slot = pid%MAXPROC;
-	if (slot < 0)
-		slot += MAXPROC;
-	return slot;
 }
 
 /*
@@ -331,12 +326,10 @@ int join(int *status){
 		USLOSS_Halt(1);
 	}
 	int old_state = disable_interrupts();
-	//USLOSS_Console("DEBUG: In join\n");
-	//dumpProcesses();
+	
 	// Search for a terminated child
 	PCB* child = process_table[getSlot(current_pid)].children;
 	while(child!=NULL){
-		//USLOSS_Console("DEBUG: looking at child\n");
 		if(child->process_state == PROC_STATE_TERMINATED){
 			// free memory, empty slot in table, save status
 			*status = child->status;
@@ -361,11 +354,8 @@ int join(int *status){
 	}
 
 	// Checked all children, none have terminated
-	//USLOSS_Console("Join Error: could not find any already dead children\n");
-	//USLOSS_Halt(-2); 
 	restore_interrupts(old_state);
 	return NO_CHILDREN_RETURN;
-	
 }
 
 /*
@@ -381,32 +371,30 @@ int join(int *status){
 	switchToPid - the PID of the process to switch to
 */
 void quit(int status, int switchToPid){
-	//USLOSS_Console("DEBUG: In quit. Switching to PID (%d)\n", switchToPid);
-	//int old_state = disable_interrupts();
 	if(get_mode() != 1){
 		USLOSS_Console("ERROR: Someone attempted to call quit while in user mode!\n");
 		USLOSS_Halt(-1);
 	}
 	int old_state = disable_interrupts();
-	if(process_table[getSlot(current_pid)].children != NULL){
-		if(process_table[getSlot(current_pid)].children->process_state!=-1){
+
+	if(process_table[getSlot(current_pid)].children != NULL){ 
+		if(process_table[getSlot(current_pid)].children->process_state!=PROC_STATE_EMPTY){ 
 			USLOSS_Console("ERROR: Process pid %d called quit() while it still had children.\n", current_pid);
 			USLOSS_Halt(-1);
 		}
 	}
+
+	// Change state to terminated and save status
 	process_table[getSlot(current_pid)].process_state = PROC_STATE_TERMINATED;
 	process_table[getSlot(current_pid)].status = status;
-	
-	//USLOSS_Context old_context = process_table[getSlot(current_pid)].context;
-	//USLOSS_Context new_context = process_table[getSlot(switchToPid)].context;	
-	
 	mmu_quit(current_pid);
+
+	// Switch to the new process	
 	int old_pid = current_pid;
 	current_pid = switchToPid;
 	process_table[getSlot(current_pid)].process_state = PROC_STATE_RUNNING;
 	mmu_flush();
 	USLOSS_ContextSwitch(&process_table[getSlot(old_pid)].context, &process_table[getSlot(current_pid)].context);
-	//dumpProcesses();
 	restore_interrupts(old_state);
 }
 
@@ -421,7 +409,6 @@ void quit(int status, int switchToPid){
 
 */
 int getpid(void){
-	//USLOSS_Console("DEBUG: In getpid\n");
 	if(get_mode()!=1){
 		USLOSS_Console("ERROR: Someone attempted to call getpid while in user mode!\n");
 		USLOSS_Halt(1);
@@ -440,7 +427,6 @@ int getpid(void){
  Return Value: None
 */
 void dumpProcesses(void){
-	//USLOSS_Console("DEBUG: In dumpProcesses\n");
 	if(get_mode()!=1){
 		USLOSS_Console("ERROR: Someone attempted to call dumpProcesses while in user mode!\n");
 		USLOSS_Halt(1);
@@ -468,8 +454,6 @@ void dumpProcesses(void){
         else
             USLOSS_Console("Unknown process state (%d)\n", slot->process_state);
     }
-//	USLOSS_Console("\n");
-
 	restore_interrupts(old_state);
 }
 
@@ -483,19 +467,45 @@ void TEMP_switchTo(int newpid){
 		USLOSS_Halt(1);
 	}
 	int old_state = disable_interrupts();
-	//USLOSS_Console("DEBUG In TEMP_switchTo\n");
-	//dumpProcesses();	
-	USLOSS_Context old_context = process_table[getSlot(current_pid)].context;
-	process_table[getSlot(current_pid)].process_state = PROC_STATE_READY;
 	
+	// Even those these are not used, they cause a floating point exception after the halt
+	// in testcase_wrapper if I remove them
+	USLOSS_Context old_context = process_table[getSlot(current_pid)].context;
 	USLOSS_Context new_context = process_table[getSlot(newpid)].context;
+
+	// Change process states
+	process_table[getSlot(current_pid)].process_state = PROC_STATE_READY;
 	process_table[getSlot(newpid)].process_state = PROC_STATE_RUNNING;
+	
 	int old_pid = current_pid;
 	current_pid = newpid;
-	//dumpProcesses();
 	mmu_flush();
 	USLOSS_ContextSwitch(&process_table[getSlot(old_pid)].context, &process_table[getSlot(current_pid)].context);
 	restore_interrupts(old_state);
+}
+
+// HELPER FUNCTIONS
+
+/**
+ * Increments the pid_counter by 1 and returns the next pid able to be used.
+ */
+int get_new_pid() {
+	if(get_mode()!=1){
+		USLOSS_Console("ERROR: Someone attempted to call get_new_pid while in user mode!\n");
+		USLOSS_Halt(1);
+	}	
+	static int pid_counter = 2;
+	return pid_counter++;
+}
+
+/**
+ * Returns the slot in the process table associated with the specified pid.
+ */
+int getSlot(int pid){
+	int slot = pid%MAXPROC;
+	if (slot < 0)
+		slot += MAXPROC;
+	return slot;
 }
 
 /**
@@ -506,6 +516,12 @@ int get_mode(){
 	return (USLOSS_PSR_CURRENT_MODE & USLOSS_PsrGet());
 }
 
+/**
+ * Changes the PSR to disable interrupts.
+ * 
+ * Return: 1 if the interupts were previously enabled, 0 if they were
+ * 		disbaled.
+ */
 int disable_interrupts(){
 	int old_state = USLOSS_PSR_CURRENT_INT;
 	int result = USLOSS_PsrSet(USLOSS_PsrGet() & ~USLOSS_PSR_CURRENT_INT);
@@ -515,6 +531,10 @@ int disable_interrupts(){
 	return old_state;
 }
 
+/**
+ * Restores interrupts to the specified old_state. If old_state is 0, interrupts are
+ * disabled. If old_state is grearter than 0, interrupts are enabled.
+ */
 void restore_interrupts(int old_state){
 	int result;
 	if(old_state>0){
@@ -523,10 +543,14 @@ void restore_interrupts(int old_state){
 	else{
 		result = USLOSS_PsrSet(USLOSS_PsrGet() & ~USLOSS_PSR_CURRENT_INT);
 	}
-	if(result!=USLOSS_DEV_OK)
+	if(result!=USLOSS_DEV_OK){
                 USLOSS_Console("ERROR: Could not set PSR to restore interrupts.\n");
+	}
 }
 
+/**
+ * Changes the PSR to enable interrupts.
+ */
 void enable_interrupts(){
 	int result = USLOSS_PsrSet(USLOSS_PsrGet() | USLOSS_PSR_CURRENT_INT);
 	if(result!=USLOSS_DEV_OK){
@@ -534,5 +558,6 @@ void enable_interrupts(){
 	}
 }
 
+// Dummy clock handler function
 static void clock_handler(int dev,void *arg){}
 
