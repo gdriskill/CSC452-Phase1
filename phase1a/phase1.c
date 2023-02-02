@@ -1,6 +1,6 @@
 #include "phase1.h"
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
 
 #define PROC_STATE_EMPTY		-1
 #define PROC_STATE_RUNNING		0
@@ -19,11 +19,13 @@ int get_mode();
 int disable_interrupts();
 void restore_interrupts(int old_state);
 void enable_interrupts();
+int get_new_pid();
+int getSlot(int pid);
 
 typedef struct PCB {
 	int (*init_func)(char* arg);
 	char* init_arg;	 
-	USLOSS_Context* context; // created by USLOSS_CONTEXTInit
+	USLOSS_Context context; // created by USLOSS_CONTEXTInit
 				  // gets passes the procces's main
 				  // function, stack size, stack
 	void* stack;
@@ -98,11 +100,11 @@ void init_run() {
 	//dumpProcesses();
 	// maunually switch to testcase_main (section 1.2 in phase1a)
 	TEMP_switchTo(testcase_pid);
-	int* status;
+	int status;
 	int join_return;
-	
+		
 	while (1) {
-		join_return = join(status);
+		join_return = join(&status);
 		if (join_return == NO_CHILDREN_RETURN) {
 			USLOSS_Console("DEBUG: Process does not have any children left; Halting\n");
 			USLOSS_Halt(0);
@@ -135,8 +137,9 @@ void phase1_init(void){
 	// Initializing init	
 	PCB init_proc;
 
-	USLOSS_Context* init_context = (USLOSS_Context*) malloc(sizeof(USLOSS_Context));
-	void* init_stack = malloc(USLOSS_MIN_STACK);
+	USLOSS_Context init_context;
+	void* init_stack = malloc(USLOSS_MIN_STACK);	
+	USLOSS_ContextInit(&init_context, init_stack, USLOSS_MIN_STACK, NULL, init_run);
 	init_proc.init_func = init_run;
 	
 	init_proc.context = init_context;
@@ -151,8 +154,6 @@ void phase1_init(void){
 	init_proc.older_sibling = NULL;
 	init_proc.younger_sibling = NULL;
 	process_table[INIT_IDX] = init_proc;
-	
-	USLOSS_ContextInit(init_proc.context, init_stack, USLOSS_MIN_STACK, NULL, init_proc.init_func); 
 	
 	restore_interrupts(old_state);
 	//USLOSS_Console("DEBUG: Finished initialization\n");
@@ -175,11 +176,11 @@ void startProcesses(void){
 	int old_state = disable_interrupts();
 
 	current_pid = 1;
-	USLOSS_Context* newContext = process_table[getSlot(current_pid)].context;
+	USLOSS_Context newContext = process_table[getSlot(current_pid)].context;
 
 	process_table[getSlot(current_pid)].process_state = PROC_STATE_RUNNING;
 	mmu_flush();
-	USLOSS_ContextSwitch(NULL, newContext); 
+	USLOSS_ContextSwitch(NULL, &process_table[getSlot(current_pid)].context); 
 	restore_interrupts(old_state);
 }
 
@@ -245,8 +246,9 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	}
 	
 	PCB process;
-	USLOSS_Context* context = (USLOSS_Context*) malloc(sizeof(USLOSS_Context));
+	USLOSS_Context context;
 	void* stack_ptr = malloc(stackSize);
+	USLOSS_ContextInit(&context, stack_ptr, stackSize, NULL, trampoline);
 
 	process.init_func = startFunc;
 	process.init_arg = arg;
@@ -274,7 +276,6 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	}
 	process_table[slot] = process;
 	init_pid = process.pid;
-	USLOSS_ContextInit(process.context, stack_ptr, stackSize, NULL, trampoline);
 
 	process_table[getSlot(current_pid)].children = &process_table[slot];
 	if(strcmp(name, "sentinel")!=0){
@@ -327,12 +328,15 @@ int join(int *status){
 		USLOSS_Halt(1);
 	}
 	int old_state = disable_interrupts();
-
 	//USLOSS_Console("DEBUG: In join\n");
 	// Search for a terminated child
 	PCB* child = process_table[getSlot(current_pid)].children;
 	while(child!=NULL){
 		if(child->process_state == PROC_STATE_TERMINATED){
+			// free memory, empty slot in table, save status
+			*status = child->status;
+			child->process_state = -1;
+                        free(child->stack);
 			// remove this process from child list
 			if(child->older_sibling!=NULL)
 				(child->older_sibling)->younger_sibling = child->younger_sibling;
@@ -340,10 +344,6 @@ int join(int *status){
 				(child->younger_sibling)->older_sibling = child->older_sibling;
 			if(child->younger_sibling==NULL && child->older_sibling == NULL)
 				process_table[getSlot(current_pid)].children = NULL; 
-			// Free memory and spot in process table
-			child->process_state = -1;
-			free(child->stack);
-			*status = child->status;
 			restore_interrupts(old_state);
 			return child->pid;
 		}
@@ -384,14 +384,14 @@ void quit(int status, int switchToPid){
 	process_table[getSlot(current_pid)].process_state = PROC_STATE_TERMINATED;
 	process_table[getSlot(current_pid)].status = status;
 	
-	USLOSS_Context* old_context = process_table[getSlot(current_pid)].context;
-	USLOSS_Context* new_context = process_table[getSlot(switchToPid)].context;	
+	USLOSS_Context old_context = process_table[getSlot(current_pid)].context;
+	USLOSS_Context new_context = process_table[getSlot(switchToPid)].context;	
 	
 	mmu_quit(current_pid);
+	int old_pid = current_pid;
 	current_pid = switchToPid;
-	process_table[getSlot(current_pid)].process_state = PROC_STATE_RUNNING;
 	mmu_flush();
-	USLOSS_ContextSwitch(old_context, new_context);
+	USLOSS_ContextSwitch(&process_table[getSlot(old_pid)].context, &process_table[getSlot(current_pid)].context);
 	//dumpProcesses();
 	restore_interrupts(old_state);
 }
@@ -471,16 +471,16 @@ void TEMP_switchTo(int newpid){
 	int old_state = disable_interrupts();
 	//USLOSS_Console("DEBUG In TEMP_switchTo\n");
 	//dumpProcesses();	
-	//USLOSS_Context old_context = current_process.context;
-	USLOSS_Context* old_context = process_table[getSlot(current_pid)].context;
+	USLOSS_Context old_context = process_table[getSlot(current_pid)].context;
 	process_table[getSlot(current_pid)].process_state = PROC_STATE_READY;
 
-	USLOSS_Context* new_context = process_table[getSlot(newpid)].context;
+	USLOSS_Context new_context = process_table[getSlot(newpid)].context;
 	process_table[getSlot(newpid)].process_state = PROC_STATE_RUNNING;
+	int old_pid = current_pid;
 	current_pid = newpid;
 	//dumpProcesses();
 	mmu_flush();
-	USLOSS_ContextSwitch(old_context, new_context);
+	USLOSS_ContextSwitch(&process_table[getSlot(old_pid)].context, &process_table[getSlot(current_pid)].context);
 	restore_interrupts(old_state);
 }
 
