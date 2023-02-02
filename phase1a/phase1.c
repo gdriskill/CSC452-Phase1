@@ -36,6 +36,7 @@ typedef struct PCB {
 	int status;
 	struct PCB* parent; // pointer to parent process
 	struct PCB* children; // list of children procceses
+	struct PCB* terminated_children;	// list of terminated children
 	struct PCB* older_sibling; // older sibling in parent's child list
 	struct PCB* younger_sibling; // younger sibling in parent's child list
 } PCB;
@@ -151,6 +152,7 @@ void phase1_init(void){
 	init_proc.status = 0;
 	init_proc.parent = NULL;
 	init_proc.children = NULL;
+	init_proc.terminated_children = NULL;
 	init_proc.older_sibling = NULL;
 	init_proc.younger_sibling = NULL;
 	process_table[INIT_IDX] = init_proc;
@@ -260,6 +262,7 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	process.priority = priority;
 	process.status = 0;
 	process.children = NULL;
+	process.terminated_children = NULL;
 	// Switched to insert new process at head becuase it's suggest in sepec
 	// and more time effiencent
 
@@ -376,6 +379,11 @@ void quit(int status, int switchToPid){
 	//USLOSS_Console("DEBUG: In quit. Switching to PID (%d)\n", switchToPid);
 	if(get_mode() != 1){
 		USLOSS_Console("ERORR: Someone attempted to call quit while in user mode!\n");
+		USLOSS_Halt(1);
+	}
+
+	if (process_table[getSlot(current_pid)].children != NULL) {
+		USLOSS_Console("ERROR: Trying to quit while process still has children!\n");
 		USLOSS_Halt(1);
 	}
 	int old_state = disable_interrupts();
