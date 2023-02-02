@@ -21,6 +21,7 @@ void restore_interrupts(int old_state);
 void enable_interrupts();
 int get_new_pid();
 int getSlot(int pid);
+static void clock_handler(int dev,void *arg);
 
 typedef struct PCB {
 	int (*init_func)(char* arg);
@@ -131,7 +132,7 @@ void phase1_init(void){
 		USLOSS_Halt(1);
 	}
 	int old_state = disable_interrupts();
-
+	USLOSS_IntVec[USLOSS_CLOCK_INT] = clock_handler;
 	for(int i=0; i<MAXPROC; i++){
 		PCB process;
 		process.process_state = PROC_STATE_EMPTY;
@@ -343,12 +344,15 @@ int join(int *status){
 			child->process_state = -1;
                         free(child->stack);
 			// remove this process from child list
-			if(child->older_sibling!=NULL)
+			if(child->older_sibling!=NULL){
 				(child->older_sibling)->younger_sibling = child->younger_sibling;
-			if(child->younger_sibling!=NULL)
+			}
+			if(child->younger_sibling!=NULL){
 				(child->younger_sibling)->older_sibling = child->older_sibling;
-			if(child->younger_sibling==NULL && child->older_sibling == NULL)
+			}
+			if(child->younger_sibling==NULL && child->older_sibling == NULL){
 				process_table[getSlot(current_pid)].children = NULL; 
+			}
 			restore_interrupts(old_state);
 			return child->pid;
 		}
@@ -384,10 +388,11 @@ void quit(int status, int switchToPid){
 		USLOSS_Halt(-1);
 	}
 	int old_state = disable_interrupts();
-	//dumpProcesses();
 	if(process_table[getSlot(current_pid)].children != NULL){
-		USLOSS_Console("ERROR: Can't quit while process has children\n");
-		USLOSS_Halt(-1);
+		if(process_table[getSlot(current_pid)].children->process_state!=-1){
+			USLOSS_Console("ERROR: Process pid %d called quit() while it still had children.\n", current_pid);
+			USLOSS_Halt(-1);
+		}
 	}
 	process_table[getSlot(current_pid)].process_state = PROC_STATE_TERMINATED;
 	process_table[getSlot(current_pid)].status = status;
@@ -453,10 +458,10 @@ void dumpProcesses(void){
 
         if (slot->process_state == PROC_STATE_TERMINATED)
             USLOSS_Console("Terminated(%d)\n", slot->status);
-        else if (slot->process_state == PROC_STATE_RUNNING)
-            USLOSS_Console("Running (%d)\n", slot->process_state);
+        else if (slot->pid == current_pid)
+            USLOSS_Console("Running\n");
         else if (slot->process_state == PROC_STATE_READY)
-            USLOSS_Console("Ready\n");
+            USLOSS_Console("Runnable\n");
         else if (slot->process_state == PROC_STATE_BLOCKED)
             USLOSS_Console("Blocked(%d)\n", slot->process_state);
         else
@@ -523,3 +528,6 @@ void enable_interrupts(){
 	if(result!=USLOSS_DEV_OK)
 		USLOSS_Console("ERROR: Could not set PSR to enable interrupts.\n");
 }
+
+static void clock_handler(int dev,void *arg){}
+
