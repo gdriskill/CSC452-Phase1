@@ -76,13 +76,17 @@ void testcase_wrapper() {
 	if (ret != 0) {
 		USLOSS_Console("some error was detected by the testcase\n");
 	}
-	
+	USLOSS_Console("Phase 1B TEMPORARY HACK: testcase_main() returned, simulation will now halt.\n");	
 	USLOSS_Halt(ret); 
 }
 
 void init_run() {
 	//USLOSS_Console("DEBUG: In init_run\n");
 	//USLOSS_Console("DEBUG: creating sentinel process\n");
+	phase2_start_service_processes();
+	phase3_start_service_processes();
+	phase4_start_service_processes();
+	phase5_start_service_processes();
 	int sentinel_pid = fork1("sentinel", sentinel_run, NULL, USLOSS_MIN_STACK, 7);
 	if (sentinel_pid < 0) {
 		USLOSS_Console("sentinel pid is less than zero (%d)\n", sentinel_pid);
@@ -99,6 +103,7 @@ void init_run() {
 
 	//dumpProcesses();
 	// maunually switch to testcase_main (section 1.2 in phase1a)
+	USLOSS_Console("Phase 1B TEMPORARY HACK: init() manually switching to testcase_main() after using fork1() to create it.\n");
 	TEMP_switchTo(testcase_pid);
 	int status;
 	int join_return;
@@ -217,7 +222,6 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	
 	//dumpProcesses();
 	if (stackSize < USLOSS_MIN_STACK) {
-		USLOSS_Console("Stack size (%d) is less than min size\n", stackSize);
 		return STACK_SIZE_TOO_SMALL_ERROR;
 	}
 	if(name==NULL){
@@ -240,7 +244,6 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 		pid = get_new_pid();
 		slot = getSlot(pid);
 		if(slot==start_slot){
-			USLOSS_Console("No empty slots found!\n");
 			return NO_EMPTY_SLOTS_ERROR;
 		}	
 	}
@@ -329,9 +332,11 @@ int join(int *status){
 	}
 	int old_state = disable_interrupts();
 	//USLOSS_Console("DEBUG: In join\n");
+	//dumpProcesses();
 	// Search for a terminated child
 	PCB* child = process_table[getSlot(current_pid)].children;
 	while(child!=NULL){
+		//USLOSS_Console("DEBUG: looking at child\n");
 		if(child->process_state == PROC_STATE_TERMINATED){
 			// free memory, empty slot in table, save status
 			*status = child->status;
@@ -376,11 +381,14 @@ void quit(int status, int switchToPid){
 	//USLOSS_Console("DEBUG: In quit. Switching to PID (%d)\n", switchToPid);
 	if(get_mode() != 1){
 		USLOSS_Console("ERORR: Someone attempted to call quit while in user mode!\n");
-		USLOSS_Halt(1);
+		USLOSS_Halt(-1);
 	}
 	int old_state = disable_interrupts();
 	//dumpProcesses();
-	
+	if(process_table[getSlot(current_pid)].children != NULL){
+		USLOSS_Console("ERROR: Can't quit while process has children\n");
+		USLOSS_Halt(-1);
+	}
 	process_table[getSlot(current_pid)].process_state = PROC_STATE_TERMINATED;
 	process_table[getSlot(current_pid)].status = status;
 	
