@@ -1,7 +1,7 @@
 /*
 File name: phase1.c
 Authors: Chris Macholtz and Grace Driskill
-Assignment: Phase 1 - Process Control - Milestone 1a
+Assignment: Phase 1 - Process Control - Milestone 1b
 Couse: CSC 452 Spring 2023
 Purpose: Implements the fundamental process control features of an operating system 
 	kernel. This includes bootstrapping the starting processes, forking new
@@ -49,7 +49,6 @@ typedef struct PCB {
 	int status;
 	struct PCB* parent; // pointer to parent process
 	struct PCB* children; // list of children procceses
-	struct PCB* terminated_children;	// list of terminated children
 	struct PCB* older_sibling; // older sibling in parent's child list
 	struct PCB* younger_sibling; // younger sibling in parent's child list
 } PCB;
@@ -57,6 +56,7 @@ typedef struct PCB {
 PCB process_table[MAXPROC];
 int current_pid;
 int init_pid;
+int current_start_time;
 
 // Initialization functions 
 /**
@@ -132,7 +132,7 @@ void init_run() {
 	}
 
 	USLOSS_Console("Phase 1B TEMPORARY HACK: init() manually switching to testcase_main() after using fork1() to create it.\n");
-	TEMP_switchTo(testcase_pid);
+	//TEMP_switchTo(testcase_pid);
 	int status;
 	int join_return;
 		
@@ -180,7 +180,6 @@ void phase1_init(void){
 	init_proc.status = 0;
 	init_proc.parent = NULL;
 	init_proc.children = NULL;
-	init_proc.terminated_children = NULL;
 	init_proc.older_sibling = NULL;
 	init_proc.younger_sibling = NULL;
 	process_table[INIT_IDX] = init_proc;
@@ -360,6 +359,7 @@ int join(int *status){
 	return NO_CHILDREN_RETURN;
 }
 
+
 /*
  Terminates the current process. The status for this process is stored in the process
  entry table for collection by parent process.
@@ -368,37 +368,14 @@ int join(int *status){
  May Block: This function never returns
  May Context Switch: Always context switches, since the current process	terminates.
  Args:
- 	status - The exit status of this process. It will be returned to the parent	
-		(eventually) through join().
+ 	status - The exit status of this process. It will be returned to the parent	(eventually) through join().
 	switchToPid - the PID of the process to switch to
 */
-void quit(int status, int switchToPid){
-	if(get_mode() != 1){
-		USLOSS_Console("ERROR: Someone attempted to call quit while in user mode!\n");
-		USLOSS_Halt(-1);
-	}
-	int old_state = disable_interrupts();
 
-	if(process_table[getSlot(current_pid)].children != NULL){ 
-		if(process_table[getSlot(current_pid)].children->process_state!=PROC_STATE_EMPTY){ 
-			USLOSS_Console("ERROR: Process pid %d called quit() while it still had children.\n", current_pid);
-			USLOSS_Halt(-1);
-		}
-	}
-
-	// Change state to terminated and save status
-	process_table[getSlot(current_pid)].process_state = PROC_STATE_TERMINATED;
-	process_table[getSlot(current_pid)].status = status;
-	mmu_quit(current_pid);
-
-	// Switch to the new process	
-	int old_pid = current_pid;
-	current_pid = switchToPid;
-	process_table[getSlot(current_pid)].process_state = PROC_STATE_RUNNING;
-	mmu_flush();
-	USLOSS_ContextSwitch(&process_table[getSlot(old_pid)].context, &process_table[getSlot(current_pid)].context);
-	restore_interrupts(old_state);
+void quit(int status) {
+	
 }
+
 
 /*
  Returns the PID of the current process
@@ -419,8 +396,7 @@ int getpid(void){
 }
 
 /*
- Prints out process information from process table. This includes the name, PID,
- parent PID, priority and runnable status for each process.
+ Prints out process information from process table. This includes the name, PID, parent PID, priority and runnable status for each process.
 
  Context: Interrupt Context OK
  May Block: No
@@ -460,37 +436,156 @@ void dumpProcesses(void){
 }
 
 /*
- Switches to the specified process instead of using a dispatcher. 
- Temp function for part A. 
-*/
-void TEMP_switchTo(int newpid){
-	if(get_mode()!=1){
-		USLOSS_Console("ERROR: Someone attempted to call TEMP_switchTo while in user mode!\n");
-		USLOSS_Halt(1);
-	}
-	int old_state = disable_interrupts();
-	
-	// Even those these are not used, they cause a floating point exception after the halt
-	// in testcase_wrapper if I remove them
-	USLOSS_Context old_context = process_table[getSlot(current_pid)].context;
-	USLOSS_Context new_context = process_table[getSlot(newpid)].context;
+Request for another process to terminate. However, the process is not automatically destroyed; it must call quit() on its own.
 
-	// Change process states
-	process_table[getSlot(current_pid)].process_state = PROC_STATE_READY;
-	process_table[getSlot(newpid)].process_state = PROC_STATE_RUNNING;
-	
-	int old_pid = current_pid;
-	current_pid = newpid;
-	mmu_flush();
-	USLOSS_ContextSwitch(&process_table[getSlot(old_pid)].context, &process_table[getSlot(current_pid)].context);
-	restore_interrupts(old_state);
+If the caller attemps to zap itself or zap a non-existent process (including one that has been terminated already), zap will print out an error message and call USLOSS_Halt(1)
+
+Zap will block until the target process dies. 
+
+Zap does NOT unblock any processes.
+
+Context: Process Context ONLY
+May Block: Yes
+May Context Switch: Yes
+Args: 
+	pid - PID of the process to zap 
+Return Value: None
+*/
+void zap(int pid) {
+
 }
 
+/*
+Checks to see if the current process has been zapped by another
+
+Context: Process Context ONLY
+May Block: No
+May Context Switch: No
+Args: None
+Return Value:
+	0: the calling process has not been zapped (yet)
+	1: the calling process has been zapped
+*/
 // HELPER FUNCTIONS
 
 /**
  * Increments the pid_counter by 1 and returns the next pid able to be used.
  */
+int isZapped(void) {
+	return -1;
+}
+
+/*
+Used heavily in this phase. newStatus describes why the process is blocked and it MUST BE GREATER THAN 10
+
+Record the status in the process table entry for this process; once this is nonzero, the dispatcher should never allow the process to run (until the process is unblocked)
+
+Call the dispatcher
+
+Context: Process Context ONLY
+May Block: MUST BLOCK
+May Context Switch: MUST BLOCK
+Args:
+	newStatus - The reason for blocking the process
+Return Value: None
+*/
+void blockMe(int newStatus) {
+
+}
+
+/*
+Called by another process other than the blocked process. The unblocked process is placed at the END of the run-queue
+
+Must call the dispatcher just before it returns in case the process is higher priority.
+
+Context: Interrupt Context OK
+May Block: No
+May Context Switch: Yes
+Args:
+	pid - The process to unblock
+Return Value:
+	-2: the indicated process was not blocked, does not exist, or is blocked on a status <= 10
+	0: Otherwise
+*/
+int unblockProc(int pid) {
+	return -1;
+}
+
+/*
+Sets the stored value for the start time for the current process
+
+Context: Process Context ONLY
+May Block: No
+Args:
+	time - the time (in ms) to set for current_start_time
+Return Value:
+	Returns the start time for the current running process (current_start_time)
+*/
+void setCurStartTime(int time) {
+	current_start_time = time;
+}
+
+/*
+Reads the stored value for the start time for the current process
+
+Context: Process Context ONLY
+May Block: No
+Args: None
+Return Value:
+	Returns the start time for the current running process (current_start_time)
+*/
+int readCurStartTime(void) {
+	return current_start_time;
+}
+
+/*
+This function compares readCurStartTime() and currentTime(). Calls the dispatcher if the current timeslice has run for 80 ms
+
+Context: Process Context ONLY
+May Block: No
+May Context Switch: Yes
+Args: None
+Return Value: None
+*/
+void timeSlice(void) {
+
+}
+
+/*
+Returns the total time consumed by the current process
+
+Context: Process Context ONLY
+May Block: No
+Args: None
+Return Value:
+	The total time (in ms) consumed by a process, across all of the times it has been dispatched since it was created.
+*/
+int readtime(void) {
+
+}
+
+/*
+Returns wall clock time. This must use USLOSS_DeviceInput(USLOSS_CLOCK_DEV,...) to read the time
+
+Context: Process Context ONLY
+May Block: No
+Args: None
+Return Value:
+	The wall-clock time (in ms)
+*/
+int currentTime(void) {
+
+}
+
+/*
+Returns a new PID for a process. Checks for mode, as user cannot do this.
+
+Context: Process Context ONLY
+May Block: No
+Args: None
+Return Value: 
+	A new pid for a process
+*/
 int get_new_pid() {
 	if(get_mode()!=1){
 		USLOSS_Console("ERROR: Someone attempted to call get_new_pid while in user mode!\n");
