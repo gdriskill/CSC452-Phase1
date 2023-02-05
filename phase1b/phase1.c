@@ -13,18 +13,22 @@ Purpose: Implements the fundamental process control features of an operating sys
 #include "usloss.h"
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+
+#define DEBUG 1
 
 #define PROC_STATE_EMPTY		-1
-#define PROC_STATE_RUNNING		0
-#define PROC_STATE_READY		1
-#define PROC_STATE_BLOCKED		2
-#define PROC_STATE_TERMINATED	3	
+#define PROC_STATE_RUNNING      0
+#define PROC_STATE_READY        1
+#define PROC_STATE_BLOCKED      2
+#define PROC_STATE_TERMINATED   3	
 
-#define NO_CHILDREN_RETURN		-2
-#define STACK_SIZE_TOO_SMALL_ERROR	-2
-#define NO_EMPTY_SLOTS_ERROR		-1
+#define NO_CHILDREN_RETURN      -2
+#define STACK_SIZE_TOO_SMALL_ERROR  -2
+#define NO_EMPTY_SLOTS_ERROR        -1
 
-#define INIT_IDX				1
+#define INIT_IDX                1
+#define MIN_PRIORITY			7
 
 // HELPER FUNCTIONS
 int get_mode();
@@ -34,6 +38,7 @@ void enable_interrupts();
 int get_new_pid();
 int getSlot(int pid);
 static void clock_handler(int dev,void *arg);
+void dispatcher();
 
 typedef struct PCB {
 	int (*init_func)(char* arg);
@@ -51,12 +56,14 @@ typedef struct PCB {
 	struct PCB* children; // list of children procceses
 	struct PCB* older_sibling; // older sibling in parent's child list
 	struct PCB* younger_sibling; // younger sibling in parent's child list
+	struct PCB* next_in_queue;
 } PCB;
 
-PCB process_table[MAXPROC];
-int current_pid;
-int init_pid;
-int current_start_time;
+static PCB process_table[MAXPROC];
+static PCB* run_queue[MIN_PRIORITY];
+static int current_pid;
+static int init_pid;
+static int current_start_time;
 
 // Initialization functions 
 /**
@@ -67,6 +74,11 @@ int current_start_time;
  * type for fork1.
  */
 int sentinel_run(char* args) {
+	if (DEBUG)
+		USLOSS_Console("DEBUG: in sentinel run\n");	
+	
+	enable_interrupts();
+	
 	while (1) {
 		if (phase2_check_io() == 0) {
 			USLOSS_Console("Report deadlock and terminate simulation\n");
@@ -81,6 +93,11 @@ int sentinel_run(char* args) {
  * the necessary args for the current process. 
  */
 void trampoline(void) {
+	if (DEBUG) {
+		USLOSS_Console("DEBUG: In trampoline\n");
+		USLOSS_Console("DEBUG: init pid: %d\n", init_pid);
+	}
+
 	enable_interrupts();
 	
 	int (*init_func)(char* arg) = process_table[getSlot(init_pid)].init_func;
@@ -114,6 +131,9 @@ int testcase_wrapper(char* args) {
  * join its children.
  */
 void init_run() {
+	if (DEBUG)
+		USLOSS_Console("DEBUG: in init_run()\n"); 
+
 	phase2_start_service_processes();
 	phase3_start_service_processes();
 	phase4_start_service_processes();
@@ -135,7 +155,7 @@ void init_run() {
 	//TEMP_switchTo(testcase_pid);
 	int status;
 	int join_return;
-		
+	
 	while (1) {
 		join_return = join(&status);
 		if (join_return == NO_CHILDREN_RETURN) {
@@ -153,6 +173,9 @@ void init_run() {
  May Context Switch: n/a
 */
 void phase1_init(void){
+	if (DEBUG)
+		USLOSS_Console("DEBUG: in phase1_init\n");
+
 	if(get_mode()!=1){
 		USLOSS_Console("ERROR: Someone attempted to call phase1_init while in user mode!\n");
 		USLOSS_Halt(1);
@@ -163,6 +186,10 @@ void phase1_init(void){
 		PCB process;
 		process.process_state = PROC_STATE_EMPTY;
 		process_table[i] = process;
+	}
+
+	for(int i=0; i<MIN_PRIORITY; i++) {
+		run_queue[i] = NULL;		
 	}
 
 	// Initializing init	
@@ -182,6 +209,7 @@ void phase1_init(void){
 	init_proc.children = NULL;
 	init_proc.older_sibling = NULL;
 	init_proc.younger_sibling = NULL;
+	init_proc.next_in_queue = NULL;
 	process_table[INIT_IDX] = init_proc;
 	
 	restore_interrupts(old_state);
@@ -195,14 +223,20 @@ void phase1_init(void){
  May Context Switch: This function never returns
  */
 void startProcesses(void){
+	if (DEBUG)
+		USLOSS_Console("DEBUG: in startProcesses\n");
+
 	if(get_mode()!=1){
 		USLOSS_Console("ERROR: Someone attempted to call phase1_init while in user mode!\n");
-                USLOSS_Halt(1);
-        }
+		USLOSS_Halt(1);
+	}
 	int old_state = disable_interrupts();
 
 	current_pid = 1;
 	process_table[getSlot(current_pid)].process_state = PROC_STATE_RUNNING;
+	if (DEBUG)
+		dumpProcesses();	
+
 	mmu_flush();
 	USLOSS_ContextSwitch(NULL, &process_table[getSlot(current_pid)].context); 
 	restore_interrupts(old_state);
@@ -231,6 +265,10 @@ void startProcesses(void){
 		or name are NULL, name is too long else, the PID of the new child process
 */
 int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int priority){
+	if (DEBUG) {
+		USLOSS_Console("DEBUG: in fork (%s)\n", name);
+	}
+
 	if(get_mode()!=1){
 		USLOSS_Console("ERROR: Someone attempted to call fork1 while in user mode!\n");
 		USLOSS_Halt(-1);
@@ -241,8 +279,8 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 		return STACK_SIZE_TOO_SMALL_ERROR;
 	}
 	if(name==NULL){
-                return -1;
-        }
+		return -1;
+	}
 	if(strlen(name)>MAXNAME){
 		return -1;
 	}
@@ -280,6 +318,7 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	process.priority = priority;
 	process.status = 0;
 	process.children = NULL;
+	process.next_in_queue = NULL;
 	process.parent = &process_table[getSlot(current_pid)];
 
 	// Insert the new processes into parent's children list
@@ -300,6 +339,20 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	if(strcmp(name, "sentinel")!=0){
 		mmu_init_proc(pid);
 	}
+
+	// Add process to the run queue
+	PCB* next_runnable = run_queue[priority-1];
+	if (next_runnable == NULL) {
+		run_queue[priority-1] = &process_table[slot];
+	} else {
+		while (next_runnable->next_in_queue != NULL) {
+			next_runnable = next_runnable->next_in_queue;
+		}
+		next_runnable->next_in_queue = &process_table[slot];
+	}
+	
+	dispatcher();
+
 	restore_interrupts(old_state);
 	return pid;
 }
@@ -373,7 +426,29 @@ int join(int *status){
 */
 
 void quit(int status) {
+	if(get_mode() != 1){
+		USLOSS_Console("ERROR: Someone attempted to call quit while in user mode!\n");
+		USLOSS_Halt(-1);
+	}
+	int old_state = disable_interrupts();
+
+	if(process_table[getSlot(current_pid)].children != NULL){ 
+		if(process_table[getSlot(current_pid)].children->process_state!=PROC_STATE_EMPTY){ 
+			USLOSS_Console("ERROR: Process pid %d called quit() while it still had children.\n", current_pid);
+			USLOSS_Halt(-1);
+		}
+	}
+
+	// Change state to terminated and save status
+	process_table[getSlot(current_pid)].process_state = PROC_STATE_TERMINATED;
+	process_table[getSlot(current_pid)].status = status;
+	mmu_quit(current_pid);
+	mmu_flush();
+
+	// Switch to the new process	
 	
+	dispatcher();
+	restore_interrupts(old_state);
 }
 
 
@@ -409,7 +484,7 @@ void dumpProcesses(void){
 		USLOSS_Console("ERROR: Someone attempted to call dumpProcesses while in user mode!\n");
 		USLOSS_Halt(1);
 	}
-	int old_state = disable_interrupts();
+	//int old_state = disable_interrupts();
 	USLOSS_Console(" PID  PPID  NAME              PRIORITY  STATE\n");
 
 	for (int i=0; i<MAXPROC; i++)
@@ -432,7 +507,7 @@ void dumpProcesses(void){
         else
             USLOSS_Console("Unknown process state (%d)\n", slot->process_state);
     }
-	restore_interrupts(old_state);
+	//restore_interrupts(old_state);
 }
 
 /*
@@ -567,6 +642,7 @@ int readtime(void) {
 /*
 Returns wall clock time. This must use USLOSS_DeviceInput(USLOSS_CLOCK_DEV,...) to read the time
 
+Code used from Prof. Russ Lewis from the spec
 Context: Process Context ONLY
 May Block: No
 Args: None
@@ -574,7 +650,12 @@ Return Value:
 	The wall-clock time (in ms)
 */
 int currentTime(void) {
+	int retval;
 
+	int usloss_rc = USLOSS_DeviceInput(USLOSS_CLOCK_DEV, 0, &retval);
+	assert(usloss_rc == USLOSS_DEV_OK);
+
+	return retval;
 }
 
 /*
@@ -600,8 +681,8 @@ int get_new_pid() {
  */
 int getSlot(int pid){
 	int slot = pid%MAXPROC;
-	if (slot < 0)
-		slot += MAXPROC;
+	//if (slot < 0)
+	//	slot += MAXPROC;
 	return slot;
 }
 
@@ -620,10 +701,13 @@ int get_mode(){
  * 		disbaled.
  */
 int disable_interrupts(){
+	if (DEBUG)
+		USLOSS_Console("DEBUG: Disabling interrupts\n");
+
 	int old_state = USLOSS_PSR_CURRENT_INT;
 	int result = USLOSS_PsrSet(USLOSS_PsrGet() & ~USLOSS_PSR_CURRENT_INT);
 	if(result!=USLOSS_DEV_OK){
-                USLOSS_Console("ERROR: Could not set PSR to disable interrupts.\n");	
+		USLOSS_Console("ERROR: Could not set PSR to disable interrupts.\n");	
 	}
 	return old_state;
 }
@@ -633,6 +717,9 @@ int disable_interrupts(){
  * disabled. If old_state is grearter than 0, interrupts are enabled.
  */
 void restore_interrupts(int old_state){
+	if (DEBUG)
+		USLOSS_Console("DEBUG: Restoring interrupts\n");
+	
 	int result;
 	if(old_state>0){
 		result = USLOSS_PsrSet(USLOSS_PsrGet() | USLOSS_PSR_CURRENT_INT);
@@ -641,7 +728,7 @@ void restore_interrupts(int old_state){
 		result = USLOSS_PsrSet(USLOSS_PsrGet() & ~USLOSS_PSR_CURRENT_INT);
 	}
 	if(result!=USLOSS_DEV_OK){
-                USLOSS_Console("ERROR: Could not set PSR to restore interrupts.\n");
+		USLOSS_Console("ERROR: Could not set PSR to restore interrupts.\n");
 	}
 }
 
@@ -649,12 +736,105 @@ void restore_interrupts(int old_state){
  * Changes the PSR to enable interrupts.
  */
 void enable_interrupts(){
+	if (DEBUG)
+		USLOSS_Console("DEBUG: Enabling interrupts\n");
+	
 	int result = USLOSS_PsrSet(USLOSS_PsrGet() | USLOSS_PSR_CURRENT_INT);
 	if(result!=USLOSS_DEV_OK){
 		USLOSS_Console("ERROR: Could not set PSR to enable interrupts.\n");
 	}
 }
 
-// Dummy clock handler function
-static void clock_handler(int dev,void *arg){}
+// Used with permission from Prof. Russ Lewis in the spec
+static void clock_handler(int dev,void *arg) {
+	if (DEBUG) {
+		USLOSS_Console("DEBUG: clockHandler(): PSR = %d\n", USLOSS_PsrGet());
+		USLOSS_Console("DEBUG: clockHandler(): currentTime = %d\n", currentTime()); 		
+	}
 
+	/* make sure to call this first, before timeSlice(), since we want to do the Phase 2 
+     * related work even if process(es) are chewing up lots of CPU
+	 */
+	phase2_clockHandler();
+
+	// call the dispatcher if the time slice has expired
+	timeSlice();
+
+	/* when we return from the handler, USLOSS automatically re-enables interrupts and disables 
+     * kernel mode (unless we were previously in kernel code). Or I think so. I haven't 
+     * double-checked yet. TODO
+     */
+}
+
+/*
+Dispatcher
+*/
+void dispatcher(void) {
+	if (DEBUG) {
+		USLOSS_Console("DEBUG: entering dispatcher\n");
+		dumpProcesses();
+	}
+
+	// Check for the highest priority process that is in the ready list, including the current process
+	// If a process was terminated, look for the next highest process in the run queue
+	// If needing to context switch, save the old context and load up the new one
+
+	int current_priority;	
+	PCB current_process = process_table[getSlot(current_pid)];
+	if (current_process.process_state == PROC_STATE_TERMINATED || current_process.process_state == PROC_STATE_BLOCKED) {
+		current_priority = MIN_PRIORITY;
+	} else {
+		current_priority = current_process.priority;
+	}
+
+	for (int i = 0; i < current_priority; i++) {
+		if (run_queue[i] != NULL) {
+			// Take new process from run queue	
+			PCB* new_process_ptr = run_queue[i];	
+			if (new_process_ptr->next_in_queue != NULL) {
+				run_queue[i] = new_process_ptr->next_in_queue;
+				new_process_ptr->next_in_queue = NULL;
+			} else {
+				run_queue[i] = NULL;
+			}
+	
+			// if not blocked, put old process into the run queue
+			int old_pid = current_pid;
+			PCB* old_process_ptr = &process_table[getSlot(old_pid)];
+			if (old_process_ptr->process_state == PROC_STATE_RUNNING) {
+				old_process_ptr->process_state = PROC_STATE_READY;
+
+				PCB* next_process = run_queue[old_process_ptr->priority-1];
+				if (next_process == NULL) {
+					run_queue[old_process_ptr->priority-1] = old_process_ptr;
+				} else {
+					while (next_process->next_in_queue != NULL) {
+						next_process = next_process->next_in_queue;
+					}
+					next_process->next_in_queue = old_process_ptr;
+				}	
+			}
+
+			current_pid = new_process_ptr->pid;
+			// Carrying over the weirdness re: floating point exception after halt.
+			// Not using these variables
+			USLOSS_Context old_context = process_table[getSlot(old_pid)].context;
+			USLOSS_Context new_context = process_table[getSlot(current_pid)].context;
+
+			// Change process states
+			process_table[getSlot(current_pid)].process_state = PROC_STATE_RUNNING;
+
+			mmu_flush();
+		
+			if (DEBUG) {
+				USLOSS_Console("DEBUG: Leaving dispatcher\n");
+				dumpProcesses();
+			}	
+			USLOSS_ContextSwitch(&process_table[getSlot(old_pid)].context, &process_table[getSlot(current_pid)].context);
+		}
+	}
+
+	if (DEBUG) {
+		USLOSS_Console("DEBUG: dispatcher decides not to switch\n");
+	}	
+}
