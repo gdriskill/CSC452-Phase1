@@ -15,7 +15,7 @@ Purpose: Implements the fundamental process control features of an operating sys
 #include <string.h>
 #include <assert.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
 #define PROC_STATE_EMPTY        -1
 #define PROC_STATE_RUNNING      0
@@ -24,6 +24,7 @@ Purpose: Implements the fundamental process control features of an operating sys
 #define PROC_STATE_TERMINATED   3	
 
 #define STATUS_JOIN_BLOCK       11
+#define STATUS_ZAP_BLOCK	12
 
 #define NO_CHILDREN_ERROR           -2
 #define STACK_SIZE_TOO_SMALL_ERROR  -2
@@ -71,6 +72,8 @@ typedef struct PCB {
 	//struct PCB* younger_sibling; // younger sibling in parent's child list
 	struct PCB* next_sibling;
 	struct PCB* next_in_queue;
+	struct PCB* my_zapper;
+	struct PCB* next_zapper;
 } PCB;
 
 static PCB process_table[MAXPROC];
@@ -154,7 +157,7 @@ void init_run() {
 		USLOSS_Console("DEBUG: in init_run()\n"); 
 
 	process_table[getSlot(current_pid)].start_time = currentTime();
-	enable_interrupts();
+
 	phase2_start_service_processes();
 	phase3_start_service_processes();
 	phase4_start_service_processes();
@@ -349,6 +352,8 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	process.total_time = 0;
 	process.children = NULL;
 	process.next_in_queue = NULL;
+	process.my_zapper = NULL;
+	process.next_zapper = NULL;
 	process.parent = &process_table[getSlot(current_pid)];
 
 	// Insert the new processes into parent's children list
@@ -499,7 +504,6 @@ void quit(int status) {
 	process_ptr->process_state = PROC_STATE_TERMINATED;
 	process_ptr->status = status;
 	mmu_quit(current_pid);
-	mmu_flush();
 
 	
 	// Wake up parent to recheck for join
@@ -507,6 +511,12 @@ void quit(int status) {
 		restore_interrupts(old_state);
 		unblockProc(process_ptr->parent->pid);
 	} else {
+		// Wake up zappers
+		PCB* zapper = process_ptr->my_zapper;
+		while(zapper!=NULL){
+			unblockProc(zapper->pid);
+			zapper = zapper->next_zapper;
+		}
 		// Switch to the new process	
 		dispatcher();
 		restore_interrupts(old_state);
@@ -590,7 +600,22 @@ Args:
 Return Value: None
 */
 void zap(int pid) {
-
+	if(current_pid==pid){
+		USLOSS_Console("ERROR: process tried to zap itself\n");
+		USLOSS_Halt(1);
+	}
+	if(process_table[getSlot(pid)].process_state == PROC_STATE_EMPTY){
+		USLOSS_Console("ERROR: process tried to zap nonexistent process\n");
+		USLOSS_Halt(1);
+	}
+	if(process_table[getSlot(pid)].process_state==PROC_STATE_TERMINATED){
+		USLOSS_Console("ERROR: process tried to zap a terminated process\n");
+		USLOSS_Halt(1);
+	}	
+	// place current process at front of the zapper list
+	process_table[getSlot(current_pid)].next_zapper = process_table[getSlot(pid)].my_zapper;
+	process_table[getSlot(pid)].my_zapper = &process_table[getSlot(current_pid)];
+	blockMe(STATUS_ZAP_BLOCK);
 }
 
 /*
@@ -604,13 +629,13 @@ Return Value:
 	0: the calling process has not been zapped (yet)
 	1: the calling process has been zapped
 */
-// HELPER FUNCTIONS
-
-/**
- * Increments the pid_counter by 1 and returns the next pid able to be used.
- */
 int isZapped(void) {
-	return -1;
+	PCB* process_ptr = &process_table[getSlot(current_pid)];
+
+        if (process_ptr->my_zapper != NULL){
+		return 1;
+	}	
+	return 0;
 }
 
 /*
@@ -711,7 +736,10 @@ Args: None
 Return Value: None
 */
 void timeSlice(void) {
-
+	int current_timeslice = currentTime() - readCurStartTime();
+	if(current_timeslice >= 80){
+		dispatcher();
+	}
 }
 
 /*
