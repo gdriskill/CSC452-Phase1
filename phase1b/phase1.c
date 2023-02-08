@@ -17,18 +17,21 @@ Purpose: Implements the fundamental process control features of an operating sys
 
 #define DEBUG 1
 
-#define PROC_STATE_EMPTY		-1
+#define PROC_STATE_EMPTY        -1
 #define PROC_STATE_RUNNING      0
 #define PROC_STATE_READY        1
 #define PROC_STATE_BLOCKED      2
 #define PROC_STATE_TERMINATED   3	
 
-#define NO_CHILDREN_RETURN      -2
+#define STATUS_JOIN_BLOCK       11
+
+#define NO_CHILDREN_ERROR           -2
 #define STACK_SIZE_TOO_SMALL_ERROR  -2
 #define NO_EMPTY_SLOTS_ERROR        -1
+#define UNBLOCK_STATUS_ERROR        -2
 
 #define INIT_IDX                1
-#define MIN_PRIORITY			7
+#define MIN_PRIORITY            7
 
 // HELPER FUNCTIONS
 int get_mode();
@@ -37,7 +40,15 @@ void restore_interrupts(int old_state);
 void enable_interrupts();
 int get_new_pid();
 int getSlot(int pid);
+
 static void clock_handler(int dev,void *arg);
+static void alarm_handler(int dev, void *arg);
+static void terminal_handler(int dev, void *arg);
+static void syscall_handler(int dev, void *arg);
+static void disk_handler(int dev, void *arg);
+static void mmu_handler(int dev, void *arg);
+static void illegal_handler(int dev, void *arg);
+
 void dispatcher();
 
 typedef struct PCB {
@@ -52,10 +63,13 @@ typedef struct PCB {
 	int process_state; 
 	int priority;
 	int status;
+	int start_time;
+	int total_time;
 	struct PCB* parent; // pointer to parent process
 	struct PCB* children; // list of children procceses
-	struct PCB* older_sibling; // older sibling in parent's child list
-	struct PCB* younger_sibling; // younger sibling in parent's child list
+	//struct PCB* older_sibling; // older sibling in parent's child list
+	//struct PCB* younger_sibling; // younger sibling in parent's child list
+	struct PCB* next_sibling;
 	struct PCB* next_in_queue;
 } PCB;
 
@@ -63,7 +77,6 @@ static PCB process_table[MAXPROC];
 static PCB* run_queue[MIN_PRIORITY];
 static int current_pid;
 static int init_pid;
-static int current_start_time;
 
 // Initialization functions 
 /**
@@ -77,6 +90,7 @@ int sentinel_run(char* args) {
 	if (DEBUG)
 		USLOSS_Console("DEBUG: in sentinel run\n");	
 	
+	process_table[getSlot(current_pid)].start_time = currentTime();
 	enable_interrupts();
 	
 	while (1) {
@@ -103,6 +117,8 @@ void trampoline(void) {
 	int (*init_func)(char* arg) = process_table[getSlot(init_pid)].init_func;
 	char* init_arg = process_table[getSlot(init_pid)].init_arg;
 	init_func(init_arg);
+
+	quit(0);
 }
 
 /**
@@ -113,12 +129,15 @@ void trampoline(void) {
  * type for fork1.
  */
 int testcase_wrapper(char* args) {
-	enable_interrupts();
+	process_table[getSlot(current_pid)].start_time = currentTime();
+	//enable_interrupts();
+
 	int ret = testcase_main();
 	if (ret != 0) {
 		USLOSS_Console("Some error was detected by the testcase\n");
 	}
 	USLOSS_Console("Phase 1B TEMPORARY HACK: testcase_main() returned, simulation will now halt.\n");	
+	process_table[getSlot(current_pid)].total_time = readtime();
 	USLOSS_Halt(ret); 
 	return 0;
 }
@@ -134,6 +153,8 @@ void init_run() {
 	if (DEBUG)
 		USLOSS_Console("DEBUG: in init_run()\n"); 
 
+	process_table[getSlot(current_pid)].start_time = currentTime();
+	enable_interrupts();
 	phase2_start_service_processes();
 	phase3_start_service_processes();
 	phase4_start_service_processes();
@@ -152,13 +173,13 @@ void init_run() {
 	}
 
 	USLOSS_Console("Phase 1B TEMPORARY HACK: init() manually switching to testcase_main() after using fork1() to create it.\n");
-	//TEMP_switchTo(testcase_pid);
 	int status;
 	int join_return;
 	
 	while (1) {
+		blockMe(STATUS_JOIN_BLOCK);
 		join_return = join(&status);
-		if (join_return == NO_CHILDREN_RETURN) {
+		if (join_return == NO_CHILDREN_ERROR) {
 			USLOSS_Console("Process does not have any children left; Halting\n");
 			USLOSS_Halt(0);
 		}
@@ -182,6 +203,14 @@ void phase1_init(void){
 	}
 	int old_state = disable_interrupts();
 	USLOSS_IntVec[USLOSS_CLOCK_INT] = clock_handler;
+	USLOSS_IntVec[USLOSS_ALARM_INT] = alarm_handler;
+	USLOSS_IntVec[USLOSS_TERM_INT] = terminal_handler;
+	USLOSS_IntVec[USLOSS_SYSCALL_INT] = syscall_handler;
+	USLOSS_IntVec[USLOSS_DISK_INT] = disk_handler;
+	USLOSS_IntVec[USLOSS_DISK_INT] = disk_handler;
+	USLOSS_IntVec[USLOSS_MMU_INT] = mmu_handler;
+	USLOSS_IntVec[USLOSS_ILLEGAL_INT] = illegal_handler;
+
 	for(int i=0; i<MAXPROC; i++){
 		PCB process;
 		process.process_state = PROC_STATE_EMPTY;
@@ -205,10 +234,11 @@ void phase1_init(void){
 	init_proc.process_state = PROC_STATE_READY;
 	init_proc.priority = 6;
 	init_proc.status = 0;
+	init_proc.start_time = 0;
+	init_proc.total_time = 0;
 	init_proc.parent = NULL;
 	init_proc.children = NULL;
-	init_proc.older_sibling = NULL;
-	init_proc.younger_sibling = NULL;
+	init_proc.next_sibling = NULL;
 	init_proc.next_in_queue = NULL;
 	process_table[INIT_IDX] = init_proc;
 	
@@ -234,8 +264,6 @@ void startProcesses(void){
 
 	current_pid = 1;
 	process_table[getSlot(current_pid)].process_state = PROC_STATE_RUNNING;
-	if (DEBUG)
-		dumpProcesses();	
 
 	mmu_flush();
 	USLOSS_ContextSwitch(NULL, &process_table[getSlot(current_pid)].context); 
@@ -317,6 +345,8 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	process.process_state = PROC_STATE_READY;
 	process.priority = priority;
 	process.status = 0;
+	process.start_time = 0;
+	process.total_time = 0;
 	process.children = NULL;
 	process.next_in_queue = NULL;
 	process.parent = &process_table[getSlot(current_pid)];
@@ -324,13 +354,10 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	// Insert the new processes into parent's children list
 	PCB* child_ptr = process_table[getSlot(current_pid)].children;
 	if(child_ptr!=NULL){
-		process.younger_sibling = child_ptr;
-		process.older_sibling = NULL;
-		child_ptr->older_sibling = &process;
+		process.next_sibling = child_ptr;
 	} 
 	else{
-		process.younger_sibling = NULL;
-		process.older_sibling = NULL;
+		process.next_sibling = NULL;
 	}
 	process_table[slot] = process;
 	init_pid = process.pid;
@@ -381,35 +408,62 @@ int join(int *status){
 	}
 	int old_state = disable_interrupts();
 	
-	// Search for a terminated child
+	// Search for a terminated child. If no children, error
 	PCB* child = process_table[getSlot(current_pid)].children;
+	if (child == NULL) {
+		USLOSS_Console("ERROR: Current process has no children\n");
+		restore_interrupts(old_state);
+		return NO_CHILDREN_ERROR;
+	}
+
+	PCB* prev_sibling = NULL;
 	while(child!=NULL){
 		if(child->process_state == PROC_STATE_TERMINATED){
 			// free memory, empty slot in table, save status
 			*status = child->status;
-			child->process_state = -1;
-                        free(child->stack);
+			child->process_state = PROC_STATE_EMPTY;
+			free(child->stack);
 			// remove this process from child list
-			if(child->older_sibling!=NULL){
-				(child->older_sibling)->younger_sibling = child->younger_sibling;
+			// If a middle child has terminated
+			if(prev_sibling != NULL && child->next_sibling!=NULL){
+				prev_sibling->next_sibling = child->next_sibling;
+			} 
+			// If the oldest child has terminated
+			else if (prev_sibling != NULL && child->next_sibling == NULL) {
+				prev_sibling->next_sibling = NULL;
 			}
-			if(child->younger_sibling!=NULL){
-				(child->younger_sibling)->older_sibling = child->older_sibling;
-			}
-			if(child->younger_sibling==NULL && child->older_sibling == NULL){
+			// If the youngest child has terminated 
+			else if (prev_sibling == NULL && child->next_sibling != NULL) {
+				process_table[getSlot(current_pid)].children = child->next_sibling;
+			} 
+			// If the only child has terminated
+			else {
 				process_table[getSlot(current_pid)].children = NULL; 
 			}
+
 			restore_interrupts(old_state);
 			return child->pid;
 		}
 		else {
-			child = child->younger_sibling;
+			prev_sibling = child;
+			child = child->next_sibling;
+
+			// If no child processes have terminated yet, block current process, and come back to check on dead children again
+			if (child == NULL) {
+				blockMe(STATUS_JOIN_BLOCK);
+				
+				prev_sibling = NULL;
+				child = process_table[getSlot(current_pid)].children;	
+			}
 		}
 	}
 
-	// Checked all children, none have terminated
-	restore_interrupts(old_state);
-	return NO_CHILDREN_RETURN;
+	if (DEBUG) {
+		USLOSS_Console("DEBUG: At the end of join; something went wrong\n");
+	}
+
+	return -3;
+
 }
 
 
@@ -430,25 +484,34 @@ void quit(int status) {
 		USLOSS_Console("ERROR: Someone attempted to call quit while in user mode!\n");
 		USLOSS_Halt(-1);
 	}
-	int old_state = disable_interrupts();
 
-	if(process_table[getSlot(current_pid)].children != NULL){ 
-		if(process_table[getSlot(current_pid)].children->process_state!=PROC_STATE_EMPTY){ 
+	int old_state = disable_interrupts();
+	PCB* process_ptr = &process_table[getSlot(current_pid)];
+
+	if (process_ptr->children != NULL){ 
+		if (process_ptr->children->process_state!=PROC_STATE_EMPTY){ 
 			USLOSS_Console("ERROR: Process pid %d called quit() while it still had children.\n", current_pid);
 			USLOSS_Halt(-1);
 		}
 	}
 
 	// Change state to terminated and save status
-	process_table[getSlot(current_pid)].process_state = PROC_STATE_TERMINATED;
-	process_table[getSlot(current_pid)].status = status;
+	process_ptr->process_state = PROC_STATE_TERMINATED;
+	process_ptr->status = status;
 	mmu_quit(current_pid);
 	mmu_flush();
 
-	// Switch to the new process	
 	
-	dispatcher();
-	restore_interrupts(old_state);
+	// Wake up parent to recheck for join
+	if (process_ptr->parent->process_state == PROC_STATE_BLOCKED) {
+		restore_interrupts(old_state);
+		unblockProc(process_ptr->parent->pid);
+	} else {
+		// Switch to the new process	
+		dispatcher();
+		restore_interrupts(old_state);
+	}
+
 }
 
 
@@ -485,7 +548,7 @@ void dumpProcesses(void){
 		USLOSS_Halt(1);
 	}
 	//int old_state = disable_interrupts();
-	USLOSS_Console(" PID  PPID  NAME              PRIORITY  STATE\n");
+	USLOSS_Console(" PID  PPID  NAME              PRIORITY  START TIME    TOTAL TIME        STATE\n");
 
 	for (int i=0; i<MAXPROC; i++)
 	{
@@ -494,16 +557,16 @@ void dumpProcesses(void){
 			continue;
 
 		int ppid = (slot->parent == NULL) ? 0 : slot->parent->pid;
-		USLOSS_Console("%4d  %4d  %-17s %-10d", slot->pid, ppid, slot->name, slot->priority);
+		USLOSS_Console("%4d  %4d  %-17s %-10d %-15d %-15d", slot->pid, ppid, slot->name, slot->priority, slot->start_time, slot->total_time);
 
         if (slot->process_state == PROC_STATE_TERMINATED)
             USLOSS_Console("Terminated(%d)\n", slot->status);
-        else if (slot->pid == current_pid)
+        else if (slot->process_state == PROC_STATE_RUNNING)
             USLOSS_Console("Running\n");
         else if (slot->process_state == PROC_STATE_READY)
             USLOSS_Console("Runnable\n");
         else if (slot->process_state == PROC_STATE_BLOCKED)
-            USLOSS_Console("Blocked(%d)\n", slot->process_state);
+            USLOSS_Console("Blocked(%d)\n", slot->status);
         else
             USLOSS_Console("Unknown process state (%d)\n", slot->process_state);
     }
@@ -565,7 +628,16 @@ Args:
 Return Value: None
 */
 void blockMe(int newStatus) {
+	if (DEBUG) {
+		USLOSS_Console("DEBUG: In blockMe\n");
+		USLOSS_Console("DEBUG: Process being blocked (%d)\n", current_pid);
+	}
 
+	PCB* process_ptr = &process_table[getSlot(current_pid)];
+	process_ptr->process_state = PROC_STATE_BLOCKED;
+	process_ptr->status = newStatus;
+	
+	dispatcher();
 }
 
 /*
@@ -583,21 +655,37 @@ Return Value:
 	0: Otherwise
 */
 int unblockProc(int pid) {
-	return -1;
-}
+	if (DEBUG) {
+		USLOSS_Console("DEBUG: In unblockProc (%d)\n", pid);
+		dumpProcesses();
+	}
 
-/*
-Sets the stored value for the start time for the current process
+	PCB* process_ptr = &process_table[getSlot(pid)];
+	if (process_ptr->process_state == PROC_STATE_BLOCKED) {
+		if (process_ptr->status <= 10) {
+			USLOSS_Console("ERROR: Block status less than 10\n");
+			return UNBLOCK_STATUS_ERROR;
+		}
+		process_ptr->process_state = PROC_STATE_READY;
+		process_ptr->status = 0;
 
-Context: Process Context ONLY
-May Block: No
-Args:
-	time - the time (in ms) to set for current_start_time
-Return Value:
-	Returns the start time for the current running process (current_start_time)
-*/
-void setCurStartTime(int time) {
-	current_start_time = time;
+		// Put unblocked process back in the run queue
+
+		PCB* next_process = run_queue[process_ptr->priority-1];
+		if (next_process == NULL) {
+			run_queue[process_ptr->priority-1] = process_ptr;
+		} else {
+			while (next_process->next_in_queue != NULL) {
+				next_process = next_process->next_in_queue;
+			}
+			next_process->next_in_queue = process_ptr;
+		}
+	}
+
+	int old_state = disable_interrupts();
+	dispatcher();
+	restore_interrupts(old_state);	
+	return 0;
 }
 
 /*
@@ -610,7 +698,7 @@ Return Value:
 	Returns the start time for the current running process (current_start_time)
 */
 int readCurStartTime(void) {
-	return current_start_time;
+	return process_table[getSlot(current_pid)].start_time;
 }
 
 /*
@@ -636,13 +724,13 @@ Return Value:
 	The total time (in ms) consumed by a process, across all of the times it has been dispatched since it was created.
 */
 int readtime(void) {
-
+	return currentTime() - readCurStartTime();
 }
 
 /*
 Returns wall clock time. This must use USLOSS_DeviceInput(USLOSS_CLOCK_DEV,...) to read the time
 
-Code used from Prof. Russ Lewis from the spec
+Code used from Prof. Russ Lewis from the 
 Context: Process Context ONLY
 May Block: No
 Args: None
@@ -747,11 +835,6 @@ void enable_interrupts(){
 
 // Used with permission from Prof. Russ Lewis in the spec
 static void clock_handler(int dev,void *arg) {
-	if (DEBUG) {
-		USLOSS_Console("DEBUG: clockHandler(): PSR = %d\n", USLOSS_PsrGet());
-		USLOSS_Console("DEBUG: clockHandler(): currentTime = %d\n", currentTime()); 		
-	}
-
 	/* make sure to call this first, before timeSlice(), since we want to do the Phase 2 
      * related work even if process(es) are chewing up lots of CPU
 	 */
@@ -780,11 +863,11 @@ void dispatcher(void) {
 	// If needing to context switch, save the old context and load up the new one
 
 	int current_priority;	
-	PCB current_process = process_table[getSlot(current_pid)];
-	if (current_process.process_state == PROC_STATE_TERMINATED || current_process.process_state == PROC_STATE_BLOCKED) {
+	PCB* current_process_ptr = &process_table[getSlot(current_pid)];
+	if (current_process_ptr->process_state == PROC_STATE_TERMINATED || current_process_ptr->process_state == PROC_STATE_BLOCKED) {
 		current_priority = MIN_PRIORITY;
 	} else {
-		current_priority = current_process.priority;
+		current_priority = current_process_ptr->priority;
 	}
 
 	for (int i = 0; i < current_priority; i++) {
@@ -799,42 +882,50 @@ void dispatcher(void) {
 			}
 	
 			// if not blocked, put old process into the run queue
-			int old_pid = current_pid;
-			PCB* old_process_ptr = &process_table[getSlot(old_pid)];
-			if (old_process_ptr->process_state == PROC_STATE_RUNNING) {
-				old_process_ptr->process_state = PROC_STATE_READY;
+			if (current_process_ptr->process_state == PROC_STATE_RUNNING) {
+				current_process_ptr->process_state = PROC_STATE_READY;
 
-				PCB* next_process = run_queue[old_process_ptr->priority-1];
+				PCB* next_process = run_queue[current_process_ptr->priority-1];
 				if (next_process == NULL) {
-					run_queue[old_process_ptr->priority-1] = old_process_ptr;
+					run_queue[current_process_ptr->priority-1] = current_process_ptr;
 				} else {
 					while (next_process->next_in_queue != NULL) {
 						next_process = next_process->next_in_queue;
 					}
-					next_process->next_in_queue = old_process_ptr;
+					next_process->next_in_queue = current_process_ptr;
 				}	
 			}
-
-			current_pid = new_process_ptr->pid;
-			// Carrying over the weirdness re: floating point exception after halt.
-			// Not using these variables
-			USLOSS_Context old_context = process_table[getSlot(old_pid)].context;
-			USLOSS_Context new_context = process_table[getSlot(current_pid)].context;
-
-			// Change process states
-			process_table[getSlot(current_pid)].process_state = PROC_STATE_RUNNING;
-
+ 
 			mmu_flush();
 		
+			// Logging CPU time and switching current pid
+			current_process_ptr->total_time += readtime();
+			current_pid = new_process_ptr->pid;
+			// Change process states
+			new_process_ptr->process_state = PROC_STATE_RUNNING;
+			new_process_ptr->start_time = currentTime();  
+
 			if (DEBUG) {
 				USLOSS_Console("DEBUG: Leaving dispatcher\n");
 				dumpProcesses();
-			}	
-			USLOSS_ContextSwitch(&process_table[getSlot(old_pid)].context, &process_table[getSlot(current_pid)].context);
+			}
+
+			USLOSS_ContextSwitch(&current_process_ptr->context, &new_process_ptr->context);
+			return;
 		}
 	}
 
 	if (DEBUG) {
 		USLOSS_Console("DEBUG: dispatcher decides not to switch\n");
+		dumpProcesses();
 	}	
 }
+
+// Dummy functions for interrupts
+static void alarm_handler(int dev, void *arg) {}
+static void terminal_handler(int dev, void *arg) {}
+static void syscall_handler(int dev, void *arg) {}
+static void disk_handler(int dev, void *arg) {}
+static void mmu_handler(int dev, void *arg) {}
+static void illegal_handler(int dev, void *arg) {}
+
