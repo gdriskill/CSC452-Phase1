@@ -5,7 +5,7 @@ Assignment: Phase 1 - Process Control - Milestone 1b
 Couse: CSC 452 Spring 2023
 Purpose: Implements the fundamental process control features of an operating system 
 	kernel. This includes bootstrapping the starting processes, forking new
-	processes, quitting processes and joinning processes. The functions implemented
+	processes, quitting processes and joining processes. The functions implemented
 	are defined in the header file phase1.h.
 	This program uses the USLOSS library to simulate a single computer system.
 */
@@ -15,7 +15,8 @@ Purpose: Implements the fundamental process control features of an operating sys
 #include <string.h>
 #include <assert.h>
 
-#define DEBUG 0
+#define DEBUG 1
+#define TRACE 1
 
 #define PROC_STATE_EMPTY        -1
 #define PROC_STATE_RUNNING      0
@@ -41,6 +42,7 @@ void restore_interrupts(int old_state);
 void enable_interrupts();
 int get_new_pid();
 int getSlot(int pid);
+void notify_zapper(int pid);
 
 static void clock_handler(int dev,void *arg);
 static void alarm_handler(int dev, void *arg);
@@ -68,8 +70,6 @@ typedef struct PCB {
 	int total_time;
 	struct PCB* parent; // pointer to parent process
 	struct PCB* children; // list of children procceses
-	//struct PCB* older_sibling; // older sibling in parent's child list
-	//struct PCB* younger_sibling; // younger sibling in parent's child list
 	struct PCB* next_sibling;
 	struct PCB* next_in_queue;
 	struct PCB* my_zapper;
@@ -79,7 +79,7 @@ typedef struct PCB {
 static PCB process_table[MAXPROC];
 static PCB* run_queue[MIN_PRIORITY];
 static int current_pid;
-static int init_pid;
+//static int init_pid;
 
 // Initialization functions 
 /**
@@ -90,17 +90,17 @@ static int init_pid;
  * type for fork1.
  */
 int sentinel_run(char* args) {
-	if (DEBUG)
-		USLOSS_Console("DEBUG: in sentinel run\n");	
+	if (TRACE)
+		USLOSS_Console("TRACE: in sentinel run\n");	
 	
 	process_table[getSlot(current_pid)].start_time = currentTime();
 	enable_interrupts();
 	
 	while (1) {
-		if (phase2_check_io() == 0) {
-			USLOSS_Console("Report deadlock and terminate simulation\n");
-			USLOSS_WaitInt();
-		}
+		if (phase2_check_io() == 0)
+			USLOSS_Console("DEADLOCK DETECTED!  All of the processes have blocked, but I/O is not ongoing.\n");
+		USLOSS_WaitInt();
+		//USLOSS_Halt(2);
 	}	
 }
 
@@ -110,15 +110,16 @@ int sentinel_run(char* args) {
  * the necessary args for the current process. 
  */
 void trampoline(void) {
-	if (DEBUG) {
-		USLOSS_Console("DEBUG: In trampoline\n");
-		USLOSS_Console("DEBUG: init pid: %d\n", init_pid);
-	}
+	if (TRACE) 
+		USLOSS_Console("TRACE: In trampoline\n");
+	if (DEBUG)
+		USLOSS_Console("DEBUG: init pid: %d\n", current_pid);
+	
 
 	enable_interrupts();
 	
-	int (*init_func)(char* arg) = process_table[getSlot(init_pid)].init_func;
-	char* init_arg = process_table[getSlot(init_pid)].init_arg;
+	int (*init_func)(char* arg) = process_table[getSlot(current_pid)].init_func;
+	char* init_arg = process_table[getSlot(current_pid)].init_arg;
 	init_func(init_arg);
 
 	quit(0);
@@ -132,6 +133,9 @@ void trampoline(void) {
  * type for fork1.
  */
 int testcase_wrapper(char* args) {
+	if (TRACE)
+		USLOSS_Console("TRACE: In testcase_wrapper\n");
+
 	process_table[getSlot(current_pid)].start_time = currentTime();
 	//enable_interrupts();
 
@@ -153,8 +157,8 @@ int testcase_wrapper(char* args) {
  * join its children.
  */
 void init_run() {
-	if (DEBUG)
-		USLOSS_Console("DEBUG: in init_run()\n"); 
+	if (TRACE)
+		USLOSS_Console("TRACE: in init_run()\n"); 
 
 	process_table[getSlot(current_pid)].start_time = currentTime();
 
@@ -175,12 +179,11 @@ void init_run() {
 		USLOSS_Halt(testcase_pid);
 	}
 
-	USLOSS_Console("Phase 1B TEMPORARY HACK: init() manually switching to testcase_main() after using fork1() to create it.\n");
+	//USLOSS_Console("Phase 1B TEMPORARY HACK: init() manually switching to testcase_main() after using fork1() to create it.\n");
 	int status;
 	int join_return;
 	
 	while (1) {
-		blockMe(STATUS_JOIN_BLOCK);
 		join_return = join(&status);
 		if (join_return == NO_CHILDREN_ERROR) {
 			USLOSS_Console("Process does not have any children left; Halting\n");
@@ -197,8 +200,8 @@ void init_run() {
  May Context Switch: n/a
 */
 void phase1_init(void){
-	if (DEBUG)
-		USLOSS_Console("DEBUG: in phase1_init\n");
+	if (TRACE)
+		USLOSS_Console("TRACE: in phase1_init\n");
 
 	if(get_mode()!=1){
 		USLOSS_Console("ERROR: Someone attempted to call phase1_init while in user mode!\n");
@@ -256,8 +259,8 @@ void phase1_init(void){
  May Context Switch: This function never returns
  */
 void startProcesses(void){
-	if (DEBUG)
-		USLOSS_Console("DEBUG: in startProcesses\n");
+	if (TRACE)
+		USLOSS_Console("TRACE: in startProcesses\n");
 
 	if(get_mode()!=1){
 		USLOSS_Console("ERROR: Someone attempted to call phase1_init while in user mode!\n");
@@ -296,8 +299,8 @@ void startProcesses(void){
 		or name are NULL, name is too long else, the PID of the new child process
 */
 int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int priority){
-	if (DEBUG) {
-		USLOSS_Console("DEBUG: in fork (%s)\n", name);
+	if (TRACE) {
+		USLOSS_Console("TRACE: in fork (%s)\n", name);
 	}
 
 	if(get_mode()!=1){
@@ -365,7 +368,7 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 		process.next_sibling = NULL;
 	}
 	process_table[slot] = process;
-	init_pid = process.pid;
+	//init_pid = process.pid;
 
 	process_table[getSlot(current_pid)].children = &process_table[slot];
 	if(strcmp(name, "sentinel")!=0){
@@ -407,6 +410,9 @@ is terminated.
 
 */
 int join(int *status){
+	if (TRACE)
+		USLOSS_Console("TRACE: In join\n");
+
 	if(get_mode()!=1){
 		USLOSS_Console("ERROR: Someone attempted to call join while in user mode!\n");
 		USLOSS_Halt(1);
@@ -414,51 +420,52 @@ int join(int *status){
 	int old_state = disable_interrupts();
 	
 	// Search for a terminated child. If no children, error
-	PCB* child = process_table[getSlot(current_pid)].children;
-	if (child == NULL) {
+	PCB* child_ptr = process_table[getSlot(current_pid)].children;
+	if (child_ptr == NULL) {
 		USLOSS_Console("ERROR: Current process has no children\n");
 		restore_interrupts(old_state);
 		return NO_CHILDREN_ERROR;
 	}
 
+	PCB* process_ptr = &process_table[getSlot(current_pid)];
 	PCB* prev_sibling = NULL;
-	while(child!=NULL){
-		if(child->process_state == PROC_STATE_TERMINATED){
+	while(child_ptr!=NULL){
+		if(child_ptr->process_state == PROC_STATE_TERMINATED){
 			// free memory, empty slot in table, save status
-			*status = child->status;
-			child->process_state = PROC_STATE_EMPTY;
-			free(child->stack);
+			*status = child_ptr->status;
+			child_ptr->process_state = PROC_STATE_EMPTY;
+			free(child_ptr->stack);
 			// remove this process from child list
 			// If a middle child has terminated
-			if(prev_sibling != NULL && child->next_sibling!=NULL){
-				prev_sibling->next_sibling = child->next_sibling;
+			if(prev_sibling != NULL && child_ptr->next_sibling!=NULL){
+				prev_sibling->next_sibling = child_ptr->next_sibling;
 			} 
-			// If the oldest child has terminated
-			else if (prev_sibling != NULL && child->next_sibling == NULL) {
+			// If the last child has terminated
+			else if (prev_sibling != NULL && child_ptr->next_sibling == NULL) {
 				prev_sibling->next_sibling = NULL;
 			}
-			// If the youngest child has terminated 
-			else if (prev_sibling == NULL && child->next_sibling != NULL) {
-				process_table[getSlot(current_pid)].children = child->next_sibling;
+			// If the first child has terminated 
+			else if (prev_sibling == NULL && child_ptr->next_sibling != NULL) {
+				process_ptr->children = child_ptr->next_sibling;
 			} 
 			// If the only child has terminated
 			else {
-				process_table[getSlot(current_pid)].children = NULL; 
+				process_ptr->children = NULL; 
 			}
 
 			restore_interrupts(old_state);
-			return child->pid;
+			return child_ptr->pid;
 		}
 		else {
-			prev_sibling = child;
-			child = child->next_sibling;
+			prev_sibling = child_ptr;
+			child_ptr = child_ptr->next_sibling;
 
 			// If no child processes have terminated yet, block current process, and come back to check on dead children again
-			if (child == NULL) {
+			if (child_ptr == NULL) {
 				blockMe(STATUS_JOIN_BLOCK);
 				
 				prev_sibling = NULL;
-				child = process_table[getSlot(current_pid)].children;	
+				child_ptr = process_ptr->children;	
 			}
 		}
 	}
@@ -485,6 +492,9 @@ int join(int *status){
 */
 
 void quit(int status) {
+	if (TRACE)
+		USLOSS_Console("TRACE: In quit (%d)\n", status);
+
 	if(get_mode() != 1){
 		USLOSS_Console("ERROR: Someone attempted to call quit while in user mode!\n");
 		USLOSS_Halt(-1);
@@ -499,18 +509,36 @@ void quit(int status) {
 			USLOSS_Halt(-1);
 		}
 	}
-
+	
 	// Change state to terminated and save status
 	process_ptr->process_state = PROC_STATE_TERMINATED;
 	process_ptr->status = status;
 	mmu_quit(current_pid);
 
-	
+	// Wake up zappers
+	if (isZapped()) {
+		PCB* zapper = process_ptr->my_zapper;
+		while(zapper!=NULL){
+			process_ptr->my_zapper = zapper->next_zapper;
+			
+			//unblockProc(zapper->pid);
+			notify_zapper(zapper->pid);
+			
+			zapper = zapper->next_zapper;
+		}
+	} 
+
 	// Wake up parent to recheck for join
 	if (process_ptr->parent->process_state == PROC_STATE_BLOCKED) {
 		restore_interrupts(old_state);
 		unblockProc(process_ptr->parent->pid);
 	} else {
+		// Wake up zappers
+		PCB* zapper = process_ptr->my_zapper;
+		while(zapper!=NULL){
+			unblockProc(zapper->pid);
+			zapper = zapper->next_zapper;
+		}
 		// Wake up zappers
 		PCB* zapper = process_ptr->my_zapper;
 		while(zapper!=NULL){
@@ -558,7 +586,7 @@ void dumpProcesses(void){
 		USLOSS_Halt(1);
 	}
 	//int old_state = disable_interrupts();
-	USLOSS_Console(" PID  PPID  NAME              PRIORITY  START TIME    TOTAL TIME        STATE\n");
+	USLOSS_Console(" PID  PPID  NAME              PRIORITY  STATE\n");
 
 	for (int i=0; i<MAXPROC; i++)
 	{
@@ -567,7 +595,7 @@ void dumpProcesses(void){
 			continue;
 
 		int ppid = (slot->parent == NULL) ? 0 : slot->parent->pid;
-		USLOSS_Console("%4d  %4d  %-17s %-10d %-15d %-15d", slot->pid, ppid, slot->name, slot->priority, slot->start_time, slot->total_time);
+		USLOSS_Console("%4d  %4d  %-17s %-10d", slot->pid, ppid, slot->name, slot->priority);
 
         if (slot->process_state == PROC_STATE_TERMINATED)
             USLOSS_Console("Terminated(%d)\n", slot->status);
@@ -576,7 +604,14 @@ void dumpProcesses(void){
         else if (slot->process_state == PROC_STATE_READY)
             USLOSS_Console("Runnable\n");
         else if (slot->process_state == PROC_STATE_BLOCKED)
-            USLOSS_Console("Blocked(%d)\n", slot->status);
+			if (slot->status == STATUS_JOIN_BLOCK) {
+				USLOSS_Console("Blocked(waiting for child to quit)\n");
+			}
+			else if (slot->status == STATUS_ZAP_BLOCK) {
+				USLOSS_Console("Blocked(waiting for zap target to quit)\n", slot->status);	
+			} else {
+				USLOSS_Console("Blocked(%d)\n", slot->status);
+			} 
         else
             USLOSS_Console("Unknown process state (%d)\n", slot->process_state);
     }
@@ -600,6 +635,10 @@ Args:
 Return Value: None
 */
 void zap(int pid) {
+	if (TRACE) {
+		USLOSS_Console("TRACE: In zap, zapping (%d)\n", pid);
+	}
+
 	if(current_pid==pid){
 		USLOSS_Console("ERROR: process tried to zap itself\n");
 		USLOSS_Halt(1);
@@ -630,12 +669,36 @@ Return Value:
 	1: the calling process has been zapped
 */
 int isZapped(void) {
+	if (TRACE)
+		USLOSS_Console("TRACE: in isZapped, examining (%d)\n", current_pid);
+	
 	PCB* process_ptr = &process_table[getSlot(current_pid)];
 
-        if (process_ptr->my_zapper != NULL){
+	if (process_ptr->my_zapper != NULL){
 		return 1;
 	}	
 	return 0;
+}
+
+/*
+Wakes up zapper and places it back into the run queue. DOES NOT CALL DISPATCHER (key difference with unblockProc)
+*/
+void notify_zapper(int pid) {	
+	// Wake process up from block
+	PCB* process_ptr = &process_table[getSlot(pid)];
+	process_ptr->process_state = PROC_STATE_READY;
+	process_ptr->status = 0;
+		
+	// Place back into run queue
+	PCB* next_process = run_queue[process_ptr->priority-1];
+	if (next_process == NULL) {
+		run_queue[process_ptr->priority-1] = process_ptr;
+	} else {
+		while (next_process->next_in_queue != NULL) {
+			next_process = next_process->next_in_queue;
+		}
+		next_process->next_in_queue = process_ptr;
+	}
 }
 
 /*
@@ -653,10 +716,10 @@ Args:
 Return Value: None
 */
 void blockMe(int newStatus) {
-	if (DEBUG) {
-		USLOSS_Console("DEBUG: In blockMe\n");
+	if (TRACE) 
+		USLOSS_Console("TRACE: In blockMe\n");
+	if (DEBUG)		
 		USLOSS_Console("DEBUG: Process being blocked (%d)\n", current_pid);
-	}
 
 	PCB* process_ptr = &process_table[getSlot(current_pid)];
 	process_ptr->process_state = PROC_STATE_BLOCKED;
@@ -680,10 +743,10 @@ Return Value:
 	0: Otherwise
 */
 int unblockProc(int pid) {
-	if (DEBUG) {
+	if (TRACE || DEBUG) 
 		USLOSS_Console("DEBUG: In unblockProc (%d)\n", pid);
+	if (DEBUG)
 		dumpProcesses();
-	}
 
 	PCB* process_ptr = &process_table[getSlot(pid)];
 	if (process_ptr->process_state == PROC_STATE_BLOCKED) {
@@ -695,7 +758,6 @@ int unblockProc(int pid) {
 		process_ptr->status = 0;
 
 		// Put unblocked process back in the run queue
-
 		PCB* next_process = run_queue[process_ptr->priority-1];
 		if (next_process == NULL) {
 			run_queue[process_ptr->priority-1] = process_ptr;
@@ -712,6 +774,7 @@ int unblockProc(int pid) {
 	restore_interrupts(old_state);	
 	return 0;
 }
+
 
 /*
 Reads the stored value for the start time for the current process
@@ -817,8 +880,8 @@ int get_mode(){
  * 		disbaled.
  */
 int disable_interrupts(){
-	if (DEBUG)
-		USLOSS_Console("DEBUG: Disabling interrupts\n");
+	if (TRACE)
+		USLOSS_Console("TRACE: Disabling interrupts\n");
 
 	int old_state = USLOSS_PSR_CURRENT_INT;
 	int result = USLOSS_PsrSet(USLOSS_PsrGet() & ~USLOSS_PSR_CURRENT_INT);
@@ -833,8 +896,8 @@ int disable_interrupts(){
  * disabled. If old_state is grearter than 0, interrupts are enabled.
  */
 void restore_interrupts(int old_state){
-	if (DEBUG)
-		USLOSS_Console("DEBUG: Restoring interrupts\n");
+	if (TRACE)
+		USLOSS_Console("TRACE: Restoring interrupts\n");
 	
 	int result;
 	if(old_state>0){
@@ -852,8 +915,8 @@ void restore_interrupts(int old_state){
  * Changes the PSR to enable interrupts.
  */
 void enable_interrupts(){
-	if (DEBUG)
-		USLOSS_Console("DEBUG: Enabling interrupts\n");
+	if (TRACE)
+		USLOSS_Console("TRACE: Enabling interrupts\n");
 	
 	int result = USLOSS_PsrSet(USLOSS_PsrGet() | USLOSS_PSR_CURRENT_INT);
 	if(result!=USLOSS_DEV_OK){
@@ -881,7 +944,7 @@ static void clock_handler(int dev,void *arg) {
 Dispatcher
 */
 void dispatcher(void) {
-	if (DEBUG) {
+	if (TRACE || DEBUG) {
 		USLOSS_Console("DEBUG: entering dispatcher\n");
 		dumpProcesses();
 	}
@@ -930,7 +993,9 @@ void dispatcher(void) {
 			current_process_ptr->total_time += readtime();
 			current_pid = new_process_ptr->pid;
 			// Change process states
-			new_process_ptr->process_state = PROC_STATE_RUNNING;
+			if (new_process_ptr->process_state == PROC_STATE_READY) {
+				new_process_ptr->process_state = PROC_STATE_RUNNING;
+			}
 			new_process_ptr->start_time = currentTime();  
 
 			if (DEBUG) {
