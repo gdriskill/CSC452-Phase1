@@ -1,0 +1,74 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+EXPECTATION: Attempt to create MAXPROC+2 processes (without calling join() on any of them).  This will work many times but eventually fail because all of the procTable slots are full.  We will only print out info about the failed ones.
+testcase_main(): start 52 processes
+testcase_main(): fork1() failed: i=47, pid is -1.
+testcase_main(): fork1() failed: i=48, pid is -1.
+testcase_main(): fork1() failed: i=49, pid is -1.
+testcase_main(): fork1() failed: i=50, pid is -1.
+testcase_main(): fork1() failed: i=51, pid is -1.
+ PID  PPID  NAME              PRIORITY  STATE
+  50     3  XXp1              2         Terminated(2)
+   1     0  init              6         Runnable
+   2     1  sentinel          7         Runnable
+   3     1  testcase_main     3         Running
+   4     3  XXp1              2         Terminated(2)
+   5     3  XXp1              2         Terminated(2)
+   6     3  XXp1              2         Terminated(2)
+   7     3  XXp1              2         Terminated(2)
+   8     3  XXp1              2         Terminated(2)
+   9     3  XXp1              2         Terminated(2)
+  10     3  XXp1              2         Terminated(2)
+  11     3  XXp1              2         Terminated(2)
+  12     3  XXp1              2         Terminated(2)
+  13     3  XXp1              2         Terminated(2)
+  14     3  XXp1              2         Terminated(2)
+  15     3  XXp1              2         Terminated(2)
+  16     3  XXp1              2         Terminated(2)
+  17     3  XXp1              2         Terminated(2)
+  18     3  XXp1              2         Terminated(2)
+  19     3  XXp1              2         Terminated(2)
+  20     3  XXp1              2         Terminated(2)
+  21     3  XXp1              2         Terminated(2)
+  22     3  XXp1              2         Terminated(2)
+  23     3  XXp1              2         Terminated(2)
+  24     3  XXp1              2         Terminated(2)
+  25     3  XXp1              2         Terminated(2)
+  26     3  XXp1              2         Terminated(2)
+  27     3  XXp1              2         Terminated(2)
+  28     3  XXp1              2         Terminated(2)
+  29     3  XXp1              2         Terminated(2)
+  30     3  XXp1              2         Terminated(2)
+  31     3  XXp1              2         Terminated(2)
+  32     3  XXp1              2         Terminated(2)
+  33     3  XXp1              2         Terminated(2)
+  34     3  XXp1              2         Terminated(2)
+  35     3  XXp1              2         Terminated(2)
+  36     3  XXp1              2         Terminated(2)
+  37     3  XXp1              2         Terminated(2)
+  38     3  XXp1              2         Terminated(2)
+  39     3  XXp1              2         Terminated(2)
+  40     3  XXp1              2         Terminated(2)
+  41     3  XXp1              2         Terminated(2)
+  42     3  XXp1              2         Terminated(2)
+  43     3  XXp1              2         Terminated(2)
+  44     3  XXp1              2         Terminated(2)
+  45     3  XXp1              2         Terminated(2)
+  46     3  XXp1              2         Terminated(2)
+  47     3  XXp1              2         Terminated(2)
+  48     3  XXp1              2         Terminated(2)
+  49     3  XXp1              2         Terminated(2)
+testcase_main(): Calling join() on 52 processes.  The number of 'failed' calls here should be the same as the number of 'failed' fork1() calls.
+testcase_main(): join() failed: i=47, pid is -2.
+testcase_main(): join() failed: i=48, pid is -2.
+testcase_main(): join() failed: i=49, pid is -2.
+testcase_main(): join() failed: i=50, pid is -2.
+testcase_main(): join() failed: i=51, pid is -2.
+ PID  PPID  NAME              PRIORITY  STATE
+   1     0  init              6         Runnable
+   2     1  sentinel          7         Runnable
+   3     1  testcase_main     3         Running
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

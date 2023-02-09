@@ -1,0 +1,28 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+QUICK SUMMARY: Tests blockMe() and unblockProc().
+XXp1(): creating children
+XXp2(): started, pid = 5, calling blockMe with status 13
+XXp2(): started, pid = 6, calling blockMe with status 14
+XXp2(): started, pid = 7, calling blockMe with status 15
+ PID  PPID  NAME              PRIORITY  STATE
+   1     0  init              6         Runnable
+   2     1  sentinel          7         Runnable
+   3     1  testcase_main     3         Blocked(waiting for child to quit)
+   4     3  XXp1              5         Running
+   5     4  XXp2              2         Blocked(13)
+   6     4  XXp2              2         Blocked(14)
+   7     4  XXp2              2         Blocked(15)
+XXp1(): unblocking children
+XXp2(): pid = 5, after blockMe
+XXp2(): pid = 6, after blockMe
+XXp2(): pid = 7, after blockMe
+XXp1(): after unblocking 5, result = 0
+XXp1(): after unblocking 6, result = 0
+XXp1(): after unblocking 7, result = 0
+XXp1(): joining with children
+testcase_main(): XXp1, pid 4, done; returning...
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

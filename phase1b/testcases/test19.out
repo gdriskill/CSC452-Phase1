@@ -1,0 +1,15 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+EXPECTATION: testcase_main() creates a child XXp2().  That process will try (many times) to create a child XXp1() with a too-small stack space.  Each call should fail.
+fork creating a child -- it will run next
+-2 returned, which is correct!
+-2 returned, which is correct!
+-2 returned, which is correct!
+-2 returned, which is correct!
+testcase_main(): created XXp2 with pid = 4
+testcase_main(): calling join
+testcase_main(): join returned pid = 4, status = 0
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

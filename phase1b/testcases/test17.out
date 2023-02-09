@@ -1,0 +1,20 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+EXPECTATION: testcase_main() will create 3 children, all running XXp1().  They have priority 5, so that they will not interrupt testcase_main().  The PID of each child is stored into a global array.  Then testcase_main() blocks in join() (three times).  The child processes should run in the same order they were created (we use a FIFO for ordering dispatch), and so each can call getpid() to confirm that it has the same value as stored in the global array.
+testcase_main(): pidlist[] = [4,5,6, ...]
+One of the XXp1() process has started, getpid()=4
+This process's getpid() matched what fork1() returned.
+This XXp1() process will now terminate.
+One of the XXp1() process has started, getpid()=5
+This process's getpid() matched what fork1() returned.
+This XXp1() process will now terminate.
+One of the XXp1() process has started, getpid()=6
+This process's getpid() matched what fork1() returned.
+This XXp1() process will now terminate.
+testcase_main: joined with child 6
+testcase_main: joined with child 5
+testcase_main: joined with child 4
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

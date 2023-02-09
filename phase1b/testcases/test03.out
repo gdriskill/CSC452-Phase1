@@ -1,0 +1,793 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+EXPECTATION: main() creates many XXp1 children, and join()s all of them; then repeats twice.  Process count is large enough to fill process table - meaning that students must free old process table entries.
+
+*** Start of round 0 of the fork()/join() operations ***
+XXp1(): started, pid = 4
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 4 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 5
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 5 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 6
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 6 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 7
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 7 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 8
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 8 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 9
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 9 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 10
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 10 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 11
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 11 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 12
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 12 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 13
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 13 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 14
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 14 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 15
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 15 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 16
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 16 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 17
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 17 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 18
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 18 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 19
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 19 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 20
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 20 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 21
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 21 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 22
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 22 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 23
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 23 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 24
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 24 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 25
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 25 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 26
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 26 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 27
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 27 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 28
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 28 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 29
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 29 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 30
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 30 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 31
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 31 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 32
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 32 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 33
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 33 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 34
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 34 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 35
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 35 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 36
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 36 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 37
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 37 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 38
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 38 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 39
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 39 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 40
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 40 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 41
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 41 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 42
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 42 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 43
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 43 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 44
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 44 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 45
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 45 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+
+**************** Calling dumpProcesses() *******************
+ PID  PPID  NAME              PRIORITY  STATE
+   1     0  init              6         Runnable
+   2     1  sentinel          7         Runnable
+   3     1  testcase_main     3         Running
+   4     3  XXp1              2         Terminated(4)
+   5     3  XXp1              2         Terminated(5)
+   6     3  XXp1              2         Terminated(6)
+   7     3  XXp1              2         Terminated(7)
+   8     3  XXp1              2         Terminated(8)
+   9     3  XXp1              2         Terminated(9)
+  10     3  XXp1              2         Terminated(10)
+  11     3  XXp1              2         Terminated(11)
+  12     3  XXp1              2         Terminated(12)
+  13     3  XXp1              2         Terminated(13)
+  14     3  XXp1              2         Terminated(14)
+  15     3  XXp1              2         Terminated(15)
+  16     3  XXp1              2         Terminated(16)
+  17     3  XXp1              2         Terminated(17)
+  18     3  XXp1              2         Terminated(18)
+  19     3  XXp1              2         Terminated(19)
+  20     3  XXp1              2         Terminated(20)
+  21     3  XXp1              2         Terminated(21)
+  22     3  XXp1              2         Terminated(22)
+  23     3  XXp1              2         Terminated(23)
+  24     3  XXp1              2         Terminated(24)
+  25     3  XXp1              2         Terminated(25)
+  26     3  XXp1              2         Terminated(26)
+  27     3  XXp1              2         Terminated(27)
+  28     3  XXp1              2         Terminated(28)
+  29     3  XXp1              2         Terminated(29)
+  30     3  XXp1              2         Terminated(30)
+  31     3  XXp1              2         Terminated(31)
+  32     3  XXp1              2         Terminated(32)
+  33     3  XXp1              2         Terminated(33)
+  34     3  XXp1              2         Terminated(34)
+  35     3  XXp1              2         Terminated(35)
+  36     3  XXp1              2         Terminated(36)
+  37     3  XXp1              2         Terminated(37)
+  38     3  XXp1              2         Terminated(38)
+  39     3  XXp1              2         Terminated(39)
+  40     3  XXp1              2         Terminated(40)
+  41     3  XXp1              2         Terminated(41)
+  42     3  XXp1              2         Terminated(42)
+  43     3  XXp1              2         Terminated(43)
+  44     3  XXp1              2         Terminated(44)
+  45     3  XXp1              2         Terminated(45)
+**************** end dumpProcesses() *******************
+
+testcase_main(): after join of child 45, status = 45
+testcase_main(): after join of child 44, status = 44
+testcase_main(): after join of child 43, status = 43
+testcase_main(): after join of child 42, status = 42
+testcase_main(): after join of child 41, status = 41
+testcase_main(): after join of child 40, status = 40
+testcase_main(): after join of child 39, status = 39
+testcase_main(): after join of child 38, status = 38
+testcase_main(): after join of child 37, status = 37
+testcase_main(): after join of child 36, status = 36
+testcase_main(): after join of child 35, status = 35
+testcase_main(): after join of child 34, status = 34
+testcase_main(): after join of child 33, status = 33
+testcase_main(): after join of child 32, status = 32
+testcase_main(): after join of child 31, status = 31
+testcase_main(): after join of child 30, status = 30
+testcase_main(): after join of child 29, status = 29
+testcase_main(): after join of child 28, status = 28
+testcase_main(): after join of child 27, status = 27
+testcase_main(): after join of child 26, status = 26
+testcase_main(): after join of child 25, status = 25
+testcase_main(): after join of child 24, status = 24
+testcase_main(): after join of child 23, status = 23
+testcase_main(): after join of child 22, status = 22
+testcase_main(): after join of child 21, status = 21
+testcase_main(): after join of child 20, status = 20
+testcase_main(): after join of child 19, status = 19
+testcase_main(): after join of child 18, status = 18
+testcase_main(): after join of child 17, status = 17
+testcase_main(): after join of child 16, status = 16
+testcase_main(): after join of child 15, status = 15
+testcase_main(): after join of child 14, status = 14
+testcase_main(): after join of child 13, status = 13
+testcase_main(): after join of child 12, status = 12
+testcase_main(): after join of child 11, status = 11
+testcase_main(): after join of child 10, status = 10
+testcase_main(): after join of child 9, status = 9
+testcase_main(): after join of child 8, status = 8
+testcase_main(): after join of child 7, status = 7
+testcase_main(): after join of child 6, status = 6
+testcase_main(): after join of child 5, status = 5
+testcase_main(): after join of child 4, status = 4
+
+*** Start of round 1 of the fork()/join() operations ***
+XXp1(): started, pid = 46
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 46 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 47
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 47 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 48
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 48 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 49
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 49 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 50
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 50 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 54
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 54 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 55
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 55 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 56
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 56 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 57
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 57 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 58
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 58 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 59
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 59 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 60
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 60 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 61
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 61 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 62
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 62 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 63
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 63 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 64
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 64 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 65
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 65 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 66
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 66 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 67
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 67 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 68
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 68 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 69
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 69 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 70
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 70 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 71
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 71 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 72
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 72 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 73
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 73 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 74
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 74 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 75
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 75 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 76
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 76 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 77
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 77 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 78
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 78 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 79
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 79 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 80
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 80 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 81
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 81 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 82
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 82 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 83
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 83 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 84
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 84 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 85
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 85 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 86
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 86 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 87
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 87 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 88
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 88 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 89
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 89 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 90
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 90 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+
+**************** Calling dumpProcesses() *******************
+ PID  PPID  NAME              PRIORITY  STATE
+  50     3  XXp1              2         Terminated(50)
+   1     0  init              6         Runnable
+   2     1  sentinel          7         Runnable
+   3     1  testcase_main     3         Running
+  54     3  XXp1              2         Terminated(54)
+  55     3  XXp1              2         Terminated(55)
+  56     3  XXp1              2         Terminated(56)
+  57     3  XXp1              2         Terminated(57)
+  58     3  XXp1              2         Terminated(58)
+  59     3  XXp1              2         Terminated(59)
+  60     3  XXp1              2         Terminated(60)
+  61     3  XXp1              2         Terminated(61)
+  62     3  XXp1              2         Terminated(62)
+  63     3  XXp1              2         Terminated(63)
+  64     3  XXp1              2         Terminated(64)
+  65     3  XXp1              2         Terminated(65)
+  66     3  XXp1              2         Terminated(66)
+  67     3  XXp1              2         Terminated(67)
+  68     3  XXp1              2         Terminated(68)
+  69     3  XXp1              2         Terminated(69)
+  70     3  XXp1              2         Terminated(70)
+  71     3  XXp1              2         Terminated(71)
+  72     3  XXp1              2         Terminated(72)
+  73     3  XXp1              2         Terminated(73)
+  74     3  XXp1              2         Terminated(74)
+  75     3  XXp1              2         Terminated(75)
+  76     3  XXp1              2         Terminated(76)
+  77     3  XXp1              2         Terminated(77)
+  78     3  XXp1              2         Terminated(78)
+  79     3  XXp1              2         Terminated(79)
+  80     3  XXp1              2         Terminated(80)
+  81     3  XXp1              2         Terminated(81)
+  82     3  XXp1              2         Terminated(82)
+  83     3  XXp1              2         Terminated(83)
+  84     3  XXp1              2         Terminated(84)
+  85     3  XXp1              2         Terminated(85)
+  86     3  XXp1              2         Terminated(86)
+  87     3  XXp1              2         Terminated(87)
+  88     3  XXp1              2         Terminated(88)
+  89     3  XXp1              2         Terminated(89)
+  90     3  XXp1              2         Terminated(90)
+  46     3  XXp1              2         Terminated(46)
+  47     3  XXp1              2         Terminated(47)
+  48     3  XXp1              2         Terminated(48)
+  49     3  XXp1              2         Terminated(49)
+**************** end dumpProcesses() *******************
+
+testcase_main(): after join of child 90, status = 90
+testcase_main(): after join of child 89, status = 89
+testcase_main(): after join of child 88, status = 88
+testcase_main(): after join of child 87, status = 87
+testcase_main(): after join of child 86, status = 86
+testcase_main(): after join of child 85, status = 85
+testcase_main(): after join of child 84, status = 84
+testcase_main(): after join of child 83, status = 83
+testcase_main(): after join of child 82, status = 82
+testcase_main(): after join of child 81, status = 81
+testcase_main(): after join of child 80, status = 80
+testcase_main(): after join of child 79, status = 79
+testcase_main(): after join of child 78, status = 78
+testcase_main(): after join of child 77, status = 77
+testcase_main(): after join of child 76, status = 76
+testcase_main(): after join of child 75, status = 75
+testcase_main(): after join of child 74, status = 74
+testcase_main(): after join of child 73, status = 73
+testcase_main(): after join of child 72, status = 72
+testcase_main(): after join of child 71, status = 71
+testcase_main(): after join of child 70, status = 70
+testcase_main(): after join of child 69, status = 69
+testcase_main(): after join of child 68, status = 68
+testcase_main(): after join of child 67, status = 67
+testcase_main(): after join of child 66, status = 66
+testcase_main(): after join of child 65, status = 65
+testcase_main(): after join of child 64, status = 64
+testcase_main(): after join of child 63, status = 63
+testcase_main(): after join of child 62, status = 62
+testcase_main(): after join of child 61, status = 61
+testcase_main(): after join of child 60, status = 60
+testcase_main(): after join of child 59, status = 59
+testcase_main(): after join of child 58, status = 58
+testcase_main(): after join of child 57, status = 57
+testcase_main(): after join of child 56, status = 56
+testcase_main(): after join of child 55, status = 55
+testcase_main(): after join of child 54, status = 54
+testcase_main(): after join of child 50, status = 50
+testcase_main(): after join of child 49, status = 49
+testcase_main(): after join of child 48, status = 48
+testcase_main(): after join of child 47, status = 47
+testcase_main(): after join of child 46, status = 46
+
+*** Start of round 2 of the fork()/join() operations ***
+XXp1(): started, pid = 91
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 91 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 92
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 92 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 93
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 93 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 94
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 94 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 95
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 95 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 96
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 96 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 97
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 97 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 98
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 98 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 99
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 99 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 100
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 100 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 104
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 104 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 105
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 105 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 106
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 106 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 107
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 107 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 108
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 108 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 109
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 109 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 110
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 110 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 111
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 111 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 112
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 112 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 113
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 113 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 114
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 114 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 115
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 115 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 116
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 116 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 117
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 117 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 118
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 118 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 119
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 119 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 120
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 120 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 121
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 121 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 122
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 122 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 123
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 123 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 124
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 124 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 125
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 125 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 126
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 126 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 127
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 127 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 128
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 128 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 129
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 129 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 130
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 130 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 131
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 131 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 132
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 132 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 133
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 133 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 134
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 134 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+XXp1(): started, pid = 135
+XXp1(): arg = 'XXp1'
+XXp1(): this process will terminate immediately.
+testcase_main(): after fork of child 135 -- you will see this after the just-created child runs, and completes.  So expect an alternation of XXp1() output, followed by these fork messages.
+
+**************** Calling dumpProcesses() *******************
+ PID  PPID  NAME              PRIORITY  STATE
+ 100     3  XXp1              2         Terminated(100)
+   1     0  init              6         Runnable
+   2     1  sentinel          7         Runnable
+   3     1  testcase_main     3         Running
+ 104     3  XXp1              2         Terminated(104)
+ 105     3  XXp1              2         Terminated(105)
+ 106     3  XXp1              2         Terminated(106)
+ 107     3  XXp1              2         Terminated(107)
+ 108     3  XXp1              2         Terminated(108)
+ 109     3  XXp1              2         Terminated(109)
+ 110     3  XXp1              2         Terminated(110)
+ 111     3  XXp1              2         Terminated(111)
+ 112     3  XXp1              2         Terminated(112)
+ 113     3  XXp1              2         Terminated(113)
+ 114     3  XXp1              2         Terminated(114)
+ 115     3  XXp1              2         Terminated(115)
+ 116     3  XXp1              2         Terminated(116)
+ 117     3  XXp1              2         Terminated(117)
+ 118     3  XXp1              2         Terminated(118)
+ 119     3  XXp1              2         Terminated(119)
+ 120     3  XXp1              2         Terminated(120)
+ 121     3  XXp1              2         Terminated(121)
+ 122     3  XXp1              2         Terminated(122)
+ 123     3  XXp1              2         Terminated(123)
+ 124     3  XXp1              2         Terminated(124)
+ 125     3  XXp1              2         Terminated(125)
+ 126     3  XXp1              2         Terminated(126)
+ 127     3  XXp1              2         Terminated(127)
+ 128     3  XXp1              2         Terminated(128)
+ 129     3  XXp1              2         Terminated(129)
+ 130     3  XXp1              2         Terminated(130)
+ 131     3  XXp1              2         Terminated(131)
+ 132     3  XXp1              2         Terminated(132)
+ 133     3  XXp1              2         Terminated(133)
+ 134     3  XXp1              2         Terminated(134)
+ 135     3  XXp1              2         Terminated(135)
+  91     3  XXp1              2         Terminated(91)
+  92     3  XXp1              2         Terminated(92)
+  93     3  XXp1              2         Terminated(93)
+  94     3  XXp1              2         Terminated(94)
+  95     3  XXp1              2         Terminated(95)
+  96     3  XXp1              2         Terminated(96)
+  97     3  XXp1              2         Terminated(97)
+  98     3  XXp1              2         Terminated(98)
+  99     3  XXp1              2         Terminated(99)
+**************** end dumpProcesses() *******************
+
+testcase_main(): after join of child 135, status = 135
+testcase_main(): after join of child 134, status = 134
+testcase_main(): after join of child 133, status = 133
+testcase_main(): after join of child 132, status = 132
+testcase_main(): after join of child 131, status = 131
+testcase_main(): after join of child 130, status = 130
+testcase_main(): after join of child 129, status = 129
+testcase_main(): after join of child 128, status = 128
+testcase_main(): after join of child 127, status = 127
+testcase_main(): after join of child 126, status = 126
+testcase_main(): after join of child 125, status = 125
+testcase_main(): after join of child 124, status = 124
+testcase_main(): after join of child 123, status = 123
+testcase_main(): after join of child 122, status = 122
+testcase_main(): after join of child 121, status = 121
+testcase_main(): after join of child 120, status = 120
+testcase_main(): after join of child 119, status = 119
+testcase_main(): after join of child 118, status = 118
+testcase_main(): after join of child 117, status = 117
+testcase_main(): after join of child 116, status = 116
+testcase_main(): after join of child 115, status = 115
+testcase_main(): after join of child 114, status = 114
+testcase_main(): after join of child 113, status = 113
+testcase_main(): after join of child 112, status = 112
+testcase_main(): after join of child 111, status = 111
+testcase_main(): after join of child 110, status = 110
+testcase_main(): after join of child 109, status = 109
+testcase_main(): after join of child 108, status = 108
+testcase_main(): after join of child 107, status = 107
+testcase_main(): after join of child 106, status = 106
+testcase_main(): after join of child 105, status = 105
+testcase_main(): after join of child 104, status = 104
+testcase_main(): after join of child 100, status = 100
+testcase_main(): after join of child 99, status = 99
+testcase_main(): after join of child 98, status = 98
+testcase_main(): after join of child 97, status = 97
+testcase_main(): after join of child 96, status = 96
+testcase_main(): after join of child 95, status = 95
+testcase_main(): after join of child 94, status = 94
+testcase_main(): after join of child 93, status = 93
+testcase_main(): after join of child 92, status = 92
+testcase_main(): after join of child 91, status = 91
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

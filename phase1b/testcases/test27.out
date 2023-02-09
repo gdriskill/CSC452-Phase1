@@ -1,0 +1,39 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+QUICK SUMMARY: Create 3 children; some of them create grandchildren; one of them tries to zap() its sibling.  Because of complex interactions of blocking and priorities, the sequence of events in the testcase is quite complex.
+testcase_main(): after fork of child 4
+testcase_main(): after fork of child 5
+testcase_main(): after fork of child 6
+testcase_main(): performing first join
+XXp1(): started
+XXp1(): arg = 'XXp1'
+XXp4(): started
+XXp4(): arg = 'XXp4FromXXp1' -- this process will terminate immediately.
+XXp2(): started
+XXp2(): arg = 'XXp2'
+XXp2(): calling zap(6)
+XXp3(): started
+XXp3(): arg = 'XXp3'
+XXp4(): started
+XXp4(): arg = 'XXp4FromXXp3a' -- this process will terminate immediately.
+XXp1(): after fork of child 7
+XXp1(): performing join
+XXp1(): exit status for child 7 is 4
+XXp3(): after fork of child 8
+XXp4(): started
+XXp4(): arg = 'XXp4FromXXp3b' -- this process will terminate immediately.
+testcase_main(): exit status for child 4 is 1
+testcase_main(): performing second join
+XXp3(): after fork of child 9
+XXp3(): performing first join
+XXp3(): exit status for child 9 is 4
+XXp3(): performing second join
+XXp3(): exit status for child 8 is 4
+testcase_main(): exit status for child 6 is 3
+testcase_main(): performing third join
+XXp2(): zap(6) returned
+testcase_main(): exit status for child 5 is 2
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

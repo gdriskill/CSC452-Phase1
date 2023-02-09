@@ -1,0 +1,21 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+QUICK SUMMARY: Checking to see what happens when you call join() with no children at all.
+XXp1(): started
+XXp1(): arg = 'XXp1'
+XXp1(): performing join with no children
+XXp1(): value returned by join is -2 expected value was -2
+testcase_main(): after fork of child 4
+XXp2(): started
+XXp2(): arg = 'XXp2'
+testcase_main(): after fork of child 5
+testcase_main(): performing first join
+testcase_main(): exit status for child 5 is 2
+testcase_main(): performing second join
+testcase_main(): exit status for child 4 is 1
+testcase_main(): performing third join, have no unjoined children
+testcase_main(): value returned by join is -2 expected value was -2
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

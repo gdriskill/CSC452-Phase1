@@ -1,0 +1,15 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+EXPECTATION: Create XXp1, which will create its own child, XXp2.  Each parent will join() with its child.  And the children will always be higher priority than the parent (in this testcase).
+XXp1(): started
+XXp1(): arg = 'XXp1'
+XXp2(): started
+XXp2(): arg = 'XXp2'
+XXp1(): after fork of child 5
+XXp1(): exit status for child 5 is 5
+testcase_main(): after fork of child 4
+testcase_main(): exit status for child 4 is 3
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

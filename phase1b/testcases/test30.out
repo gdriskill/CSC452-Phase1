@@ -1,0 +1,11 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+QUICK SUMMARY: TODO
+XXp1(): started
+XXp1(): arg = 'XXp1'
+XXp1(): zapping myself, should fail.  Calling zap(0)
+ERROR: Attempt to zap() a PID which is <=0.  other_pid = 0
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

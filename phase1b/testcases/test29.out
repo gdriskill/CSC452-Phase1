@@ -1,0 +1,20 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+QUICK SUMMARY: Some interactions of fork/join/zap.  Because of priorities, the processes run such that zap() will produce an error.
+XXp1(): started
+XXp1(): arg = 'XXp1'
+XXp1(): after fork of child 5
+XXp1(): performing first join at this point.  But first, isZapped() returns: 0
+XXp3(): started
+XXp3(): arg = 'XXp3FromXXp1'
+XXp1(): exit status for child 5 is 3
+XXp1(): at this point isZapped() returns: 0
+testcase_main(): after fork of child 4
+XXp2(): started
+XXp2(): arg = 'XXp2'
+XXp2(): calling zap(4)
+ERROR: Attempt to zap() a process that is already in the process of dying.
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

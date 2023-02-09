@@ -1,0 +1,14 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+QUICK SUMMARY: Same as test27, except with different priorities - which means that pid3 is not set by the time that XXp2() attempts to use it.
+XXp1(): started
+XXp1(): arg = 'XXp1'
+testcase_main(): after fork of child 4
+XXp2(): started
+XXp2(): arg = 'XXp2'
+XXp2(): calling zap(0)
+ERROR: Attempt to zap() a PID which is <=0.  other_pid = 0
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

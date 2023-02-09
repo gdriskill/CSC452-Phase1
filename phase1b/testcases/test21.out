@@ -1,0 +1,13 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+QUICK SUMMARY: A process tries to zap() itself
+testcase_main(): after fork of child 4
+testcase_main(): performing join
+XXp1(): started
+XXp1(): arg = 'XXp1'
+XXp1(): about to call zap() on myself, the simulation should halt.  pid1 = 4
+ERROR: Attempt to zap() itself.
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

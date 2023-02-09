@@ -1,0 +1,13 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+EXPECTATION: testcase_main() creates XXp1() child.  Child zap()s parent.  Deadlock occurs.
+XXp1(): started
+XXp1(): arg = 'XXp1'
+XXp1(): about to zap parent--should result in deadlock.  But the deadlock won't be detected until a couple steps later, when testcase_main() blocks in join().
+testcase_main(): after fork of child 4
+testcase_main(): performing join -- The very next thing you should expect is a deadlock report.
+DEADLOCK DETECTED!  All of the processes have blocked, but I/O is not ongoing.
+TESTCASE ENDED: Call counts:   check_io() <nonzero>   clockHandler() 0

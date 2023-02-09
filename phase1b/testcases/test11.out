@@ -1,0 +1,14 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+EXPECTATION: Create XXp1(), which is *SAME* priority as testcase_main(), so parent should continue to run.  It immediately zaps the child.  Child wakes up, notices that it has been zapped, and dies.
+testcase_main: calling fork1 for XXp1
+testcase_main: calling zap()
+XXp1: started
+XXp1: Loop terminated, because I've been zap()ed
+XXp1: calling quit
+testcase_main: zap() returned
+testcase_main: join returned 4, status 5
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

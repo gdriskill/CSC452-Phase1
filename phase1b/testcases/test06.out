@@ -1,0 +1,26 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+EXPECTATION: Create XXp1 (moderate priority); that creates 2 XXp2 children (low priority).  XXp1 will block on join(), which will cause main() to wake up and report the fork() results - after which the XXp2 processes will run.
+XXp1(): started
+XXp1(): arg = 'XXp1'
+XXp1(): executing fork of first child
+XXp1(): fork1 of first child returned pid = 5
+XXp1(): executing fork of second child
+XXp1(): fork1 of second child returned pid = 6
+XXp1(): performing first join
+testcase_main(): after fork of child 4 -- you should not see this until after XXp1() has created both of its children, and started its first join().  However, you should see it *before* either of the children run.
+testcase_main(): performing join
+XXp2(): started -- you should not see this until both XXp1() and testcase_main() are blocked in join().
+XXp2(): arg = 'XXp2'
+XXp2(): This process will terminate immediately.
+XXp1(): first join returned kidpid = 5, status = 5 -- you should see this after the first child terminates, and before the second child even starts.
+XXp1(): performing second join
+XXp2(): started -- you should not see this until both XXp1() and testcase_main() are blocked in join().
+XXp2(): arg = 'XXp2'
+XXp2(): This process will terminate immediately.
+XXp1(): second join returned kidpid = 6, status = 5
+testcase_main(): exit status for child 4 is 3
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

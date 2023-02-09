@@ -1,0 +1,25 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+QUICK SUMMARY: Attempt to call zap() on a process that has already terminated, but whose parent has not yet called join().
+XXp1(): started
+XXp1(): arg = 'XXp1'
+XXp1(): after fork of child 5
+XXp1(): after fork of child 6
+XXp1(): performing first join
+testcase_main(): after fork of child 4
+testcase_main(): performing first join
+XXp3(): started
+XXp3(): arg = 'XXp3'
+XXp3(): calling zap(5)
+XXp2(): started
+XXp2(): arg = 'XXp2'
+XXp2(): exiting by calling quit(2)
+XXp1(): exit status for first child 5 is 2
+XXp1(): performing second join
+XXp3(): zap(5) returned
+XXp1(): exit status for second child 6 is 3
+testcase_main(): exit status for child 4 is 1
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

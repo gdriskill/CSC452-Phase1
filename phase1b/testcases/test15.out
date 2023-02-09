@@ -1,0 +1,37 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+EXPECTATION: Same general test as test13/test14, except that now XXp1() zaps its own child, AND XXp2() will zap the same.  The sequence is thus (1) testcase_main creates XXp1 (2) XXp1 creates XXp3 (3) XXp1 blocks zapping XXp3 (4) testcase_main creates XXp2 (5) XXp2 blocks zapping XXp3 (6) testcase_main and XXp3 race (7) XXp3 calls dumpProcesses and then dies (8) XXp1 and XXp2 unblock (9) XXp1 join()s and then terminates (10) XXp2 terminates (11) testcase_main cleans up
+testcase_main(): first fork -- XXp1 will run next.
+XXp1(): started
+XXp1(): arg = 'XXp1'
+XXp1(): executing fork of first child
+XXp1(): fork1 of first child returned pid = 5
+XXp1(): zap'ing process with pid_z=5
+testcase_main(): after fork of first child 4 -- you should not see this until XXp1() blocks in zap()
+testcase_main(): second fork -- XXp2 will run next.
+XXp2(): started
+XXp2(): zap'ing process with pid_z=5 -- at this point, testcase_main() and XXp3() will race.
+XXp3(): started
+ PID  PPID  NAME              PRIORITY  STATE
+   1     0  init              6         Runnable
+   2     1  sentinel          7         Runnable
+   3     1  testcase_main     3         Runnable
+   4     3  XXp1              1         Blocked(waiting for zap target to quit)
+   5     4  XXp3              3         Running
+   6     3  XXp2              2         Blocked(waiting for zap target to quit)
+XXp3(): terminating -- when this happens, XXp1() and XXp2() will both become runnable, because both are blocked in zap().  XXp1() will run first, because it is higher priority.
+XXp1(): after zap'ing process with pid_z=5
+XXp1(): joining with child -- this will NOT block, because the child has already ended.
+XXp1(): join returned kidpid = 5, status = 5
+XXp1(): terminating -- when this happens, XXp2() will run, because it is higher priority than testcase_main().
+XXp2(): after zap'ing process with pid_z=5
+XXp2(): terminating -- testcase_main() now have time to run.
+testcase_main(): after fork of second child 6
+testcase_main(): performing join
+testcase_main(): exit status for child 6 is 5
+testcase_main(): performing join
+testcase_main(): exit status for child 4 is 3
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

@@ -1,0 +1,19 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+EXPECTATION: main() creates XXp1.  XXp1 creates XXp2, and then immediately returns before calling join(); the Phase 1 code should thus call quit() on that process.  Although XXp2 is higher priority than XXp1 (meaning that it ran to completion before this code ran), the code should complain because you quit() a process before calling join() on all of your children.
+XXp2(): started
+XXp2(): arg = 'XXp2'
+XXp2(): terminating!
+XXp1(): fork() rc=5
+ PID  PPID  NAME              PRIORITY  STATE
+   1     0  init              6         Runnable
+   2     1  sentinel          7         Runnable
+   3     1  testcase_main     3         Runnable
+   4     3  XXp1              2         Running
+   5     4  XXp2              1         Terminated(3)
+XXp1(): This process will terminate.  This should cause an error check in quit() to fire, report an error, and kill the simulation.
+ERROR: Process pid 4 called quit() while it still had children.
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

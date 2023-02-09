@@ -1,0 +1,34 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+QUICK SUMMARY: TODO
+XXp1(): creating children
+XXp2(): started, pid = 5, calling blockMe
+XXp2(): started, pid = 6, calling blockMe
+XXp2(): started, pid = 7, calling blockMe
+XXp1(): creating zapper child
+XXp3(): started, pid = 8, calling zap on pid 5
+ PID  PPID  NAME              PRIORITY  STATE
+   1     0  init              6         Runnable
+   2     1  sentinel          7         Runnable
+   3     1  testcase_main     3         Blocked(waiting for child to quit)
+   4     3  XXp1              5         Running
+   5     4  XXp2              3         Blocked(11)
+   6     4  XXp2              3         Blocked(11)
+   7     4  XXp2              3         Blocked(11)
+   8     4  XXp3              4         Blocked(waiting for zap target to quit)
+XXp1(): unblocking children
+XXp2(): pid = 5, after blockMe
+XXp2(): pid = 5, isZapped() = 1
+XXp3(): after call to zap
+XXp2(): pid = 6, after blockMe
+XXp2(): pid = 6, isZapped() = 0
+XXp2(): pid = 7, after blockMe
+XXp2(): pid = 7, isZapped() = 0
+XXp1(): after unblocking 5, result = 0
+XXp1(): after unblocking 6, result = 0
+XXp1(): after unblocking 7, result = 0
+ERROR: Process pid 4 called quit() while it still had children.
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

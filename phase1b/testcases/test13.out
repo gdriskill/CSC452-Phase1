@@ -1,0 +1,45 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+EXPECTATION: testcase_main() creates child XXp1(), priority 1.  It creates its own child, XXp3(), priority 3.  It stores the pid of the XXp3() child into a global, and then blocks on join().  testcase_main() wakes up and creates another child, XXp2(), priority 2.  This calls zap() on the pid stored in the global variable, meaning that *two* processes are now blocked on the same XXp3().  XXp3() and testcase_main() race; XXp3() will call dumpProcesses() and die, while testcase_main() will join().  When XXp3() dies, XXp1() and XXp2() will both be awoken but XXp1() will run first.
+testcase_main(): fork first child -- this will block, because the child has a higher priority
+XXp1(): started
+XXp1(): arg = 'XXp1'
+XXp1(): executing fork of child
+XXp1(): fork1 of child returned pid = 5
+XXp1(): joining with child -- when we block here, testcase_main() should wake up so that it can create its second child.
+testcase_main(): after fork of child 4 -- you should not see this until XXp1() is blocked in join().
+testcase_main(): fork second child -- this will block, because the child has a higher priority
+XXp2(): started
+XXp2(): zap'ing XXp1's child with pid_e=5 -- when we block here, testcase_main() and XXp3() will race.
+XXp3(): started
+ PID  PPID  NAME              PRIORITY  STATE
+   1     0  init              6         Runnable
+   2     1  sentinel          7         Runnable
+   3     1  testcase_main     3         Runnable
+   4     3  XXp1              1         Blocked(waiting for child to quit)
+   5     4  XXp3              3         Running
+   6     3  XXp2              2         Blocked(waiting for zap target to quit)
+XXp3(): terminating -- quit() should wake up both XXp1() and XXp2(), but you should see XXp1() run first, because it has a higher priority than XXp2().
+XXp1(): join returned kidpid = 5, status = 5
+ PID  PPID  NAME              PRIORITY  STATE
+   1     0  init              6         Runnable
+   2     1  sentinel          7         Runnable
+   3     1  testcase_main     3         Runnable
+   4     3  XXp1              1         Running
+   6     3  XXp2              2         Runnable
+XXp2(): after zap'ing child with pid_e
+ PID  PPID  NAME              PRIORITY  STATE
+   1     0  init              6         Runnable
+   2     1  sentinel          7         Runnable
+   3     1  testcase_main     3         Runnable
+   4     3  XXp1              1         Terminated(3)
+   6     3  XXp2              2         Running
+testcase_main(): after fork of child 6 -- you should not see this until XXp2() is blocked in zap().  Depending on your scheduling decisions, XXp3() *might* run before you see this message, too.
+testcase_main(): performing join
+testcase_main(): exit status for child 6 is 5
+testcase_main(): performing join
+testcase_main(): exit status for child 4 is 3
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

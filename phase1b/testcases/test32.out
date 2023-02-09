@@ -1,0 +1,11 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+QUICK SUMMARY: Attempt to zap() a non-existent process.
+XXp1(): started pid=4
+XXp1(): arg = 'XXp1'
+XXp1(): calling zap(1024), which is a non-existant process.  Should fail.
+ERROR: Attempt to zap() a non-existent process.
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

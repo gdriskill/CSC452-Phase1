@@ -1,0 +1,89 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+EXPECTATION: Similar to test03 (create a few processes, join with them, do it again) - but this one will run many iterations of the loop.  Also, each child will have a tight spin loop.  And finally, dumpProcesses() will be called from a child instead of testcase_main().
+testcase_main(): calling fork(), arg_buf = 'XXp1_0' -- testcase_main() will block until this child terminates, because the child is higher priority.
+XXp1(): XXp1_0, started, pid = 4
+XXp1(): exiting, pid = 4
+testcase_main(): after fork of child 4 -- you should not see this until the child has ended.
+testcase_main(): calling fork(), arg_buf = 'XXp1_1' -- testcase_main() will block until this child terminates, because the child is higher priority.
+XXp1(): XXp1_1, started, pid = 5
+XXp1(): exiting, pid = 5
+testcase_main(): after fork of child 5 -- you should not see this until the child has ended.
+testcase_main(): calling fork(), arg_buf = 'XXp1_2' -- testcase_main() will block until this child terminates, because the child is higher priority.
+XXp1(): XXp1_2, started, pid = 6
+XXp1(): exiting, pid = 6
+testcase_main(): after fork of child 6 -- you should not see this until the child has ended.
+testcase_main(): calling fork(), arg_buf = 'XXp1_3' -- testcase_main() will block until this child terminates, because the child is higher priority.
+XXp1(): XXp1_3, started, pid = 7
+
+Calling dumpProcesses(), from inside one of the XXp1() children.  At this point, there should be 3 terminated (but not joined) children, plus me (the running child).  testcase_main() should be runnable, but obviously not running right now.
+****************
+ PID  PPID  NAME              PRIORITY  STATE
+   1     0  init              6         Runnable
+   2     1  sentinel          7         Runnable
+   3     1  testcase_main     3         Runnable
+   4     3  XXp1              2         Terminated(4)
+   5     3  XXp1              2         Terminated(5)
+   6     3  XXp1              2         Terminated(6)
+   7     3  XXp1              2         Running
+******** end dumpProcessess() ********
+
+XXp1(): exiting, pid = 7
+testcase_main(): after fork of child 7 -- you should not see this until the child has ended.
+testcase_main(): calling fork(), arg_buf = 'XXp1_4' -- testcase_main() will block until this child terminates, because the child is higher priority.
+XXp1(): XXp1_4, started, pid = 8
+XXp1(): exiting, pid = 8
+testcase_main(): after fork of child 8 -- you should not see this until the child has ended.
+
+In the output above, you should have seen 5 children be created, with dumpProcesses() called while the 4th was running.  They should all be done now.  I will now call join() on all 5.
+
+testcase_main(): after join of child 8, status = 8
+testcase_main(): after join of child 7, status = 7
+testcase_main(): after join of child 6, status = 6
+testcase_main(): after join of child 5, status = 5
+testcase_main(): after join of child 4, status = 4
+testcase_main(): calling fork(), arg_buf = 'XXp1_0' -- testcase_main() will block until this child terminates, because the child is higher priority.
+XXp1(): XXp1_0, started, pid = 9
+XXp1(): exiting, pid = 9
+testcase_main(): after fork of child 9 -- you should not see this until the child has ended.
+testcase_main(): calling fork(), arg_buf = 'XXp1_1' -- testcase_main() will block until this child terminates, because the child is higher priority.
+XXp1(): XXp1_1, started, pid = 10
+XXp1(): exiting, pid = 10
+testcase_main(): after fork of child 10 -- you should not see this until the child has ended.
+testcase_main(): calling fork(), arg_buf = 'XXp1_2' -- testcase_main() will block until this child terminates, because the child is higher priority.
+XXp1(): XXp1_2, started, pid = 11
+XXp1(): exiting, pid = 11
+testcase_main(): after fork of child 11 -- you should not see this until the child has ended.
+testcase_main(): calling fork(), arg_buf = 'XXp1_3' -- testcase_main() will block until this child terminates, because the child is higher priority.
+XXp1(): XXp1_3, started, pid = 12
+
+Calling dumpProcesses(), from inside one of the XXp1() children.  At this point, there should be 3 terminated (but not joined) children, plus me (the running child).  testcase_main() should be runnable, but obviously not running right now.
+****************
+ PID  PPID  NAME              PRIORITY  STATE
+   1     0  init              6         Runnable
+   2     1  sentinel          7         Runnable
+   3     1  testcase_main     3         Runnable
+   9     3  XXp1              2         Terminated(9)
+  10     3  XXp1              2         Terminated(10)
+  11     3  XXp1              2         Terminated(11)
+  12     3  XXp1              2         Running
+******** end dumpProcessess() ********
+
+XXp1(): exiting, pid = 12
+testcase_main(): after fork of child 12 -- you should not see this until the child has ended.
+testcase_main(): calling fork(), arg_buf = 'XXp1_4' -- testcase_main() will block until this child terminates, because the child is higher priority.
+XXp1(): XXp1_4, started, pid = 13
+XXp1(): exiting, pid = 13
+testcase_main(): after fork of child 13 -- you should not see this until the child has ended.
+
+In the output above, you should have seen 5 children be created, with dumpProcesses() called while the 4th was running.  They should all be done now.  I will now call join() on all 5.
+
+testcase_main(): after join of child 13, status = 13
+testcase_main(): after join of child 12, status = 12
+testcase_main(): after join of child 11, status = 11
+testcase_main(): after join of child 10, status = 10
+testcase_main(): after join of child 9, status = 9
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() <nonzero>

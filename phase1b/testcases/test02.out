@@ -1,0 +1,24 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+EXPECTATION: main creates XXp1; XXp1 creates a pair of XXp2 procs; join() each parent with all its children.  (children are always higher priority than parents, in this testcase)
+XXp1(): started
+XXp1(): arg = 'XXp1'
+XXp1(): executing fork of first child
+XXp2(): started
+XXp2(): arg = 'XXp2'
+XXp2(): This XXp2() process will now quit().
+XXp1(): fork1 of first child returned pid = 5 -- you should not see this until the first XXp2 process has completed.
+XXp1(): executing fork of second child -- this happens after the first XXp2 process has completed, but before we've done a join() on it.
+XXp2(): started
+XXp2(): arg = 'XXp2'
+XXp2(): This XXp2() process will now quit().
+XXp1(): fork1 of second child returned pid = 6 -- you should not see this until the second XXp2 process has completed.
+XXp1(): first join returned kidpid = 6, status = 5
+XXp1(): second join returned kidpid = 5, status = 5
+testcase_main(): after fork of child 4 -- you should not see this until XXp1, and both of the XXp2 processes, have completed.
+testcase_main(): performing join
+testcase_main(): exit status for child 4 is 3
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

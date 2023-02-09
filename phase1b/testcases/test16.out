@@ -1,0 +1,37 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+EXPECTATION: Similar to test15, except that XXp2() will zap() XXp1() while XXp1() is also zap()ping XXp3().
+testcase_main(): first fork -- XXp1 will run next.
+XXp1(): started
+XXp1(): arg = 'XXp1'
+XXp1(): executing fork of first child -- XXp1() will continue to run, because XXp3 is very low priority.
+XXp1(): fork1 of first child returned pid = 5
+XXp1(): zap'ing process with 5 -- this will block until XXp3() dies.  Therefore, we expect testcase_main() to run next.
+testcase_main(): after fork of first child 4 -- this shouldn't happen until XXp1() blocks in zap().
+testcase_main(): second fork -- XXp2 will run next.
+XXp2(): started
+XXp2(): zap'ing process with pid = 4 -- we will block, because we are zap()ping XXp1().  When we do this, testcase_main() and XXp3() will race to run next.
+XXp3(): started
+ PID  PPID  NAME              PRIORITY  STATE
+   1     0  init              6         Runnable
+   2     1  sentinel          7         Runnable
+   3     1  testcase_main     3         Runnable
+   4     3  XXp1              1         Blocked(waiting for zap target to quit)
+   5     4  XXp3              3         Running
+   6     3  XXp2              2         Blocked(waiting for zap target to quit)
+XXp3(): terminating -- XXp1(), which is blocked in zap(), will wake up.
+XXp1(): after zap'ing process with pid_z=5
+XXp1(): joining with first child
+XXp1(): join returned kidpid = 5, status = 5
+XXp1(): terminating -- when this happens, XXp2() will unblock.  It will immediately run, because it is higher priority than testcase_main().
+XXp2(): after zap'ing process with pid = 4
+XXp2(): terminating -- this will allow testcase_main() to run.
+testcase_main(): after fork of second child 6 -- testcase_main() and XXp3() race when both XXp1() and XXp2() are blocked in zap(); thus, you might see this print early (after XXp2() blocks), or late (after XXp2() dies).
+testcase_main(): performing join -- if testcase_main() won the race with XXp3(), then it will block here, and XXp3() will run, and then that will trigger the events that cause XXp1() and XXp2() to die.  But if it *LOSES* the race, then XXp1() and XXp2() are already dead, and this will return immediately.
+testcase_main(): exit status for child 6 is 5
+testcase_main(): performing join
+testcase_main(): exit status for child 4 is 3
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0

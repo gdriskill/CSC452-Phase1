@@ -1,0 +1,12 @@
+phase2_start_service_processes() called -- currently a NOP
+phase3_start_service_processes() called -- currently a NOP
+phase4_start_service_processes() called -- currently a NOP
+phase5_start_service_processes() called -- currently a NOP
+testcase_main(): started
+QUICK SUMMARY: TODO
+XXp1(): started
+XXp1(): arg = 'XXp1'
+testcase_main(): after fork of child 4
+testcase_main(): zapping myself, should fail.  Calling zap(3)
+ERROR: Attempt to zap() itself.
+TESTCASE ENDED: Call counts:   check_io() 0   clockHandler() 0
