@@ -640,8 +640,13 @@ void zap(int pid) {
 		USLOSS_Halt(1);
 	}
 	if(process_table[getSlot(pid)].process_state == PROC_STATE_EMPTY){
-		USLOSS_Console("ERROR: Attempt to zap() non-existent process.\n");
+		USLOSS_Console("ERROR: Attempt to zap() a non-existent process.\n");
 		USLOSS_Halt(1);
+	}
+	if(process_table[getSlot(pid)].pid != pid){
+		// Slot in proc table is occupied but with differnt pid
+		USLOSS_Console("ERROR: Attempt to zap() a non-existent process.\n");
+                USLOSS_Halt(1);
 	}
 	if(process_table[getSlot(pid)].process_state==PROC_STATE_TERMINATED){
 		USLOSS_Console("ERROR: Attempt to zap() a process that is already in the process of dying.\n");
