@@ -15,8 +15,8 @@ Purpose: Implements the fundamental process control features of an operating sys
 #include <string.h>
 #include <assert.h>
 
-#define DEBUG 1
-#define TRACE 1
+#define DEBUG 0
+#define TRACE 0
 
 #define PROC_STATE_EMPTY        -1
 #define PROC_STATE_RUNNING      0
@@ -100,7 +100,7 @@ int sentinel_run(char* args) {
 		if (phase2_check_io() == 0)
 			USLOSS_Console("DEADLOCK DETECTED!  All of the processes have blocked, but I/O is not ongoing.\n");
 		USLOSS_WaitInt();
-		//USLOSS_Halt(2);
+		USLOSS_Halt(2);
 	}	
 }
 
@@ -385,9 +385,11 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 		}
 		next_runnable->next_in_queue = &process_table[slot];
 	}
-	
-	dispatcher();
 
+	if (DEBUG)
+		USLOSS_Console("DEBUG: Fork success for pid %d\n", pid);
+
+	dispatcher();	
 	restore_interrupts(old_state);
 	return pid;
 }
@@ -530,25 +532,12 @@ void quit(int status) {
 
 	// Wake up parent to recheck for join
 	if (process_ptr->parent->process_state == PROC_STATE_BLOCKED) {
-		restore_interrupts(old_state);
 		unblockProc(process_ptr->parent->pid);
-	} else {
-		// Wake up zappers
-		PCB* zapper = process_ptr->my_zapper;
-		while(zapper!=NULL){
-			unblockProc(zapper->pid);
-			zapper = zapper->next_zapper;
-		}
-		// Wake up zappers
-		PCB* zapper = process_ptr->my_zapper;
-		while(zapper!=NULL){
-			unblockProc(zapper->pid);
-			zapper = zapper->next_zapper;
-		}
-		// Switch to the new process	
-		dispatcher();
-		restore_interrupts(old_state);
 	}
+	
+	// Switch to the new process	
+	dispatcher();
+	restore_interrupts(old_state);
 
 }
 
@@ -721,11 +710,13 @@ void blockMe(int newStatus) {
 	if (DEBUG)		
 		USLOSS_Console("DEBUG: Process being blocked (%d)\n", current_pid);
 
+	int old_state = disable_interrupts();
 	PCB* process_ptr = &process_table[getSlot(current_pid)];
 	process_ptr->process_state = PROC_STATE_BLOCKED;
 	process_ptr->status = newStatus;
 	
 	dispatcher();
+	restore_interrupts(old_state);
 }
 
 /*
@@ -748,6 +739,7 @@ int unblockProc(int pid) {
 	if (DEBUG)
 		dumpProcesses();
 
+	int old_state = disable_interrupts();
 	PCB* process_ptr = &process_table[getSlot(pid)];
 	if (process_ptr->process_state == PROC_STATE_BLOCKED) {
 		if (process_ptr->status <= 10) {
@@ -769,7 +761,6 @@ int unblockProc(int pid) {
 		}
 	}
 
-	int old_state = disable_interrupts();
 	dispatcher();
 	restore_interrupts(old_state);	
 	return 0;
@@ -801,6 +792,8 @@ Return Value: None
 void timeSlice(void) {
 	int current_timeslice = currentTime() - readCurStartTime();
 	if(current_timeslice >= 80){
+		if (DEBUG)
+			USLOSS_Console("DEBUG: Time's up for pid %d\n", current_pid);
 		dispatcher();
 	}
 }
