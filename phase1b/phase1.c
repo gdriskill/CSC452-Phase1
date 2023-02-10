@@ -2,7 +2,7 @@
 File name: phase1.c
 Authors: Chris Macholtz and Grace Driskill
 Assignment: Phase 1 - Process Control - Milestone 1b
-Couse: CSC 452 Spring 2023
+Course: CSC 452 Spring 2023
 Purpose: Implements the fundamental process control features of an operating system 
 	kernel. This includes bootstrapping the starting processes, forking new
 	processes, quitting processes and joining processes. The functions implemented
@@ -15,8 +15,8 @@ Purpose: Implements the fundamental process control features of an operating sys
 #include <string.h>
 #include <assert.h>
 
-#define DEBUG 1
-#define TRACE 1
+#define DEBUG 0
+#define TRACE 0
 
 #define PROC_STATE_EMPTY        -1
 #define PROC_STATE_RUNNING      0
@@ -24,8 +24,8 @@ Purpose: Implements the fundamental process control features of an operating sys
 #define PROC_STATE_BLOCKED      2
 #define PROC_STATE_TERMINATED   3	
 
-#define STATUS_JOIN_BLOCK       11
-#define STATUS_ZAP_BLOCK	12
+#define STATUS_JOIN_BLOCK       4
+#define STATUS_ZAP_BLOCK	5
 
 #define NO_CHILDREN_ERROR           -2
 #define STACK_SIZE_TOO_SMALL_ERROR  -2
@@ -97,10 +97,11 @@ int sentinel_run(char* args) {
 	enable_interrupts();
 	
 	while (1) {
-		if (phase2_check_io() == 0)
+		if (phase2_check_io() == 0){
 			USLOSS_Console("DEADLOCK DETECTED!  All of the processes have blocked, but I/O is not ongoing.\n");
+			USLOSS_Halt(1);
+		}
 		USLOSS_WaitInt();
-		//USLOSS_Halt(2);
 	}	
 }
 
@@ -143,7 +144,6 @@ int testcase_wrapper(char* args) {
 	if (ret != 0) {
 		USLOSS_Console("Some error was detected by the testcase\n");
 	}
-	USLOSS_Console("Phase 1B TEMPORARY HACK: testcase_main() returned, simulation will now halt.\n");	
 	process_table[getSlot(current_pid)].total_time = readtime();
 	USLOSS_Halt(ret); 
 	return 0;
@@ -519,7 +519,7 @@ void quit(int status) {
 	if (isZapped()) {
 		PCB* zapper = process_ptr->my_zapper;
 		while(zapper!=NULL){
-			process_ptr->my_zapper = zapper->next_zapper;
+			process_ptr->my_zapper = zapper->next_zapper; 
 			
 			//unblockProc(zapper->pid);
 			notify_zapper(zapper->pid);
@@ -531,14 +531,8 @@ void quit(int status) {
 	// Wake up parent to recheck for join
 	if (process_ptr->parent->process_state == PROC_STATE_BLOCKED) {
 		restore_interrupts(old_state);
-		unblockProc(process_ptr->parent->pid);
+		unblock(process_ptr->parent->pid);
 	} else {
-		// Wake up zappers
-		PCB* zapper = process_ptr->my_zapper;
-		while(zapper!=NULL){
-			unblockProc(zapper->pid);
-			zapper = zapper->next_zapper;
-		}
 		// Switch to the new process	
 		dispatcher();
 		restore_interrupts(old_state);
@@ -634,15 +628,23 @@ void zap(int pid) {
 	}
 
 	if(current_pid==pid){
-		USLOSS_Console("ERROR: process tried to zap itself\n");
+		USLOSS_Console("ERROR: Attempt to zap() itself.\n");
+		USLOSS_Halt(1);
+	}
+	if(pid<=0){	
+		USLOSS_Console("ERROR: Attempt to zap() a PID which is <=0. other_pid = %d\n", pid);
+		USLOSS_Halt(1);
+	} 
+	if(pid==1){
+		USLOSS_Console("ERROR: Attempt to zap() init.\n");
 		USLOSS_Halt(1);
 	}
 	if(process_table[getSlot(pid)].process_state == PROC_STATE_EMPTY){
-		USLOSS_Console("ERROR: process tried to zap nonexistent process\n");
+		USLOSS_Console("ERROR: Attempt to zap() non-existent process.\n");
 		USLOSS_Halt(1);
 	}
 	if(process_table[getSlot(pid)].process_state==PROC_STATE_TERMINATED){
-		USLOSS_Console("ERROR: process tried to zap a terminated process\n");
+		USLOSS_Console("ERROR: Attempt to zap() a process that is already in the process of dying.\n");
 		USLOSS_Halt(1);
 	}	
 	// place current process at front of the zapper list
@@ -769,7 +771,38 @@ int unblockProc(int pid) {
 	return 0;
 }
 
+int unblock(int pid) {
+        if (TRACE || DEBUG)
+                USLOSS_Console("DEBUG: In unblockProc (%d)\n", pid);
+        if (DEBUG)
+                dumpProcesses();
 
+        PCB* process_ptr = &process_table[getSlot(pid)];
+        if (process_ptr->process_state == PROC_STATE_BLOCKED) {
+                /*if (process_ptr->status <= 10) {
+                        USLOSS_Console("ERROR: Block status less than 10\n");
+                        return UNBLOCK_STATUS_ERROR;
+                }*/
+                process_ptr->process_state = PROC_STATE_READY;
+                process_ptr->status = 0;
+
+                // Put unblocked process back in the run queue
+                PCB* next_process = run_queue[process_ptr->priority-1];
+                if (next_process == NULL) {
+                        run_queue[process_ptr->priority-1] = process_ptr;
+                } else {
+                        while (next_process->next_in_queue != NULL) {
+                                next_process = next_process->next_in_queue;
+                        }
+                        next_process->next_in_queue = process_ptr;
+                }
+        }
+
+        int old_state = disable_interrupts();
+        dispatcher();
+        restore_interrupts(old_state);
+        return 0;
+}
 /*
 Reads the stored value for the start time for the current process
 
