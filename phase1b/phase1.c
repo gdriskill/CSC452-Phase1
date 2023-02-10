@@ -423,11 +423,10 @@ int join(int *status){
 		USLOSS_Halt(1);
 	}
 	int old_state = disable_interrupts();
-	
 	// Search for a terminated child. If no children, error
 	PCB* child_ptr = process_table[getSlot(current_pid)].children;
 	if (child_ptr == NULL) {
-		USLOSS_Console("ERROR: Current process has no children\n");
+		//USLOSS_Console("ERROR: Current process has no children\n");
 		restore_interrupts(old_state);
 		return NO_CHILDREN_ERROR;
 	}
@@ -519,8 +518,8 @@ void quit(int status) {
 	process_ptr->process_state = PROC_STATE_TERMINATED;
 	process_ptr->status = status;
 	mmu_quit(current_pid);
-
-	// Wake up zappers
+	
+	// Notify zappers
 	if (isZapped()) {
 		PCB* zapper = process_ptr->my_zapper;
 		while(zapper!=NULL){
