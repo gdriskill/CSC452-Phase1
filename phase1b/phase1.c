@@ -5,8 +5,9 @@ Assignment: Phase 1 - Process Control - Milestone 1b
 Course: CSC 452 Spring 2023
 Purpose: Implements the fundamental process control features of an operating system 
 	kernel. This includes bootstrapping the starting processes, forking new
-	processes, quitting processes and joining processes. The functions implemented
-	are defined in the header file phase1.h.
+	processes, quitting processes, joining processes, zapping processes, blocking
+	and unblocking processes. The functions implemented are defined in the header
+	file phase1.h.
 	This program uses the USLOSS library to simulate a single computer system.
 */
 #include "phase1.h"
@@ -43,6 +44,9 @@ void enable_interrupts();
 int get_new_pid();
 int getSlot(int pid);
 void notify_zapper(int pid);
+int unblock(int pid);
+void notify_zapper(int pid);
+void dispatcher();
 
 static void clock_handler(int dev,void *arg);
 static void alarm_handler(int dev, void *arg);
@@ -51,8 +55,6 @@ static void syscall_handler(int dev, void *arg);
 static void disk_handler(int dev, void *arg);
 static void mmu_handler(int dev, void *arg);
 static void illegal_handler(int dev, void *arg);
-
-void dispatcher();
 
 typedef struct PCB {
 	int (*init_func)(char* arg);
@@ -70,19 +72,17 @@ typedef struct PCB {
 	int total_time;
 	struct PCB* parent; // pointer to parent process
 	struct PCB* children; // list of children procceses
-	struct PCB* next_sibling;
-	struct PCB* next_in_queue;
-	struct PCB* my_zapper;
-	struct PCB* next_zapper;
+	struct PCB* next_sibling; // next process in child list
+	struct PCB* next_in_queue; // next process in run queue
+	struct PCB* my_zapper; // process that zap this process
+	struct PCB* next_zapper; // next process in zaper list
 } PCB;
 
 static PCB process_table[MAXPROC];
 static PCB* run_queue[MIN_PRIORITY];
-static PCB* run_queue_tail[MIN_PRIORITY];
 static int current_pid;
-//static int init_pid;
 
-// Initialization functions 
+//---------------------- Initialization functions ----------------------
 /**
  * Start function for the sentinel process. Runs an infinte
  * loop to check for deadlock.
@@ -139,7 +139,6 @@ int testcase_wrapper(char* args) {
 		USLOSS_Console("TRACE: In testcase_wrapper\n");
 
 	process_table[getSlot(current_pid)].start_time = currentTime();
-	//enable_interrupts();
 
 	int ret = testcase_main();
 	if (ret != 0) {
@@ -180,7 +179,6 @@ void init_run() {
 		USLOSS_Halt(testcase_pid);
 	}
 
-	//USLOSS_Console("Phase 1B TEMPORARY HACK: init() manually switching to testcase_main() after using fork1() to create it.\n");
 	int status;
 	int join_return;
 	
@@ -192,6 +190,8 @@ void init_run() {
 		}
 	}
 }
+
+//---------------------- Required functions ----------------------
 
 /*
  Initializes the data structures for Phase 1
@@ -226,7 +226,6 @@ void phase1_init(void){
 
 	for(int i=0; i<MIN_PRIORITY; i++) {
 		run_queue[i] = NULL;	
-		run_queue_tail[i] =NULL;	
 	}
 
 	// Initializing init	
@@ -370,7 +369,6 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 		process.next_sibling = NULL;
 	}
 	process_table[slot] = process;
-	//init_pid = process.pid;
 
 	process_table[getSlot(current_pid)].children = &process_table[slot];
 	if(strcmp(name, "sentinel")!=0){
@@ -381,13 +379,11 @@ int fork1(char *name, int (*startFunc)(char*), char *arg, int stackSize, int pri
 	PCB* next_runnable = run_queue[priority-1];
 	if (next_runnable == NULL) {
 		run_queue[priority-1] = &process_table[slot];
-		run_queue_tail[priority-1] = &process_table[slot];
 	} else {
 		while (next_runnable->next_in_queue != NULL) {
 			next_runnable = next_runnable->next_in_queue;
 		}
 		next_runnable->next_in_queue = &process_table[slot];
-		//run_queue_tail[priority-1] = &process_table[slot];
 	}
 	if(priority<process.parent->priority){	
 		dispatcher();
@@ -426,7 +422,6 @@ int join(int *status){
 	// Search for a terminated child. If no children, error
 	PCB* child_ptr = process_table[getSlot(current_pid)].children;
 	if (child_ptr == NULL) {
-		//USLOSS_Console("ERROR: Current process has no children\n");
 		restore_interrupts(old_state);
 		return NO_CHILDREN_ERROR;
 	}
@@ -438,6 +433,7 @@ int join(int *status){
 			// free memory, empty slot in table, save status
 			*status = child_ptr->status;
 			child_ptr->process_state = PROC_STATE_EMPTY;
+        
 			free(child_ptr->stack);
 			// remove this process from child list
 			// If a middle child has terminated
@@ -496,13 +492,12 @@ int join(int *status){
 */
 
 void quit(int status) {
-	if (TRACE)
-		USLOSS_Console("TRACE: In quit (%d)\n", status);
-
 	if(get_mode() != 1){
 		USLOSS_Console("ERROR: Someone attempted to call quit while in user mode!\n");
 		USLOSS_Halt(-1);
 	}
+	if (TRACE)
+		USLOSS_Console("TRACE: In quit (%d)\n", status);
 
 	int old_state = disable_interrupts();
 	PCB* process_ptr = &process_table[getSlot(current_pid)];
@@ -524,16 +519,13 @@ void quit(int status) {
 		PCB* zapper = process_ptr->my_zapper;
 		while(zapper!=NULL){
 			process_ptr->my_zapper = zapper->next_zapper; 
-			
-			//unblockProc(zapper->pid);
 			notify_zapper(zapper->pid);
-			
 			zapper = zapper->next_zapper;
 		}
 	} 
 
 	// Wake up parent to recheck for join
-	if (process_ptr->parent->process_state == PROC_STATE_BLOCKED) {
+	if (process_ptr->parent->status == STATUS_JOIN_BLOCK) {
 		restore_interrupts(old_state);
 		unblock(process_ptr->parent->pid);
 	} else {
@@ -594,18 +586,19 @@ void dumpProcesses(void){
             USLOSS_Console("Running\n");
         else if (slot->process_state == PROC_STATE_READY)
             USLOSS_Console("Runnable\n");
-        else if (slot->process_state == PROC_STATE_BLOCKED)
-			if (slot->status == STATUS_JOIN_BLOCK) {
-				USLOSS_Console("Blocked(waiting for child to quit)\n");
-			}
-			else if (slot->status == STATUS_ZAP_BLOCK) {
-				USLOSS_Console("Blocked(waiting for zap target to quit)\n", slot->status);	
-			} else {
-				USLOSS_Console("Blocked(%d)\n", slot->status);
-			} 
+        else if (slot->process_state == PROC_STATE_BLOCKED){
+		if (slot->status == STATUS_JOIN_BLOCK) {
+			USLOSS_Console("Blocked(waiting for child to quit)\n");
+		}
+		else if (slot->status == STATUS_ZAP_BLOCK) {
+			USLOSS_Console("Blocked(waiting for zap target to quit)\n", slot->status);	
+		} else {
+			USLOSS_Console("Blocked(%d)\n", slot->status);
+		} 
+	}
         else
             USLOSS_Console("Unknown process state (%d)\n", slot->process_state);
-    }
+    	}
 	restore_interrupts(old_state);
 }
 
@@ -626,6 +619,10 @@ Args:
 Return Value: None
 */
 void zap(int pid) {
+	if(get_mode()!=1){
+		USLOSS_Console("ERROR: Someone attempted to call zap while in user mode!\n");
+		USLOSS_Halt(1);
+	}
 	if (TRACE) {
 		USLOSS_Console("TRACE: In zap, zapping (%d)\n", pid);
 	}
@@ -674,6 +671,10 @@ Return Value:
 	1: the calling process has been zapped
 */
 int isZapped(void) {
+	if(get_mode()!=1){
+		USLOSS_Console("ERROR: Someone attempted to call isZapped while in user mode!\n");
+		USLOSS_Halt(1);
+	}
 	if (TRACE)
 		USLOSS_Console("TRACE: in isZapped, examining (%d)\n", current_pid);
 	int old_state = disable_interrupts();
@@ -685,29 +686,6 @@ int isZapped(void) {
 	}	
 	restore_interrupts(old_state);
 	return ret_val;
-}
-
-/*
-Wakes up zapper and places it back into the run queue. DOES NOT CALL DISPATCHER (key difference with unblockProc)
-*/
-void notify_zapper(int pid) {	
-	int old_state = disable_interrupts();
-	// Wake process up from block
-	PCB* process_ptr = &process_table[getSlot(pid)];
-	process_ptr->process_state = PROC_STATE_READY;
-	process_ptr->status = 0;
-		
-	// Place back into run queue
-	PCB* next_process = run_queue[process_ptr->priority-1];
-	if (next_process == NULL) {
-		run_queue[process_ptr->priority-1] = process_ptr;
-	} else {
-		while (next_process->next_in_queue != NULL) {
-			next_process = next_process->next_in_queue;
-		}
-		next_process->next_in_queue = process_ptr;
-	}
-	restore_interrupts(old_state);
 }
 
 /*
@@ -725,10 +703,15 @@ Args:
 Return Value: None
 */
 void blockMe(int newStatus) {
+	if(get_mode()!=1){
+		USLOSS_Console("ERROR: Someone attempted to call blockMe while in user mode!\n");
+		USLOSS_Halt(1);
+	}
 	if (TRACE) 
 		USLOSS_Console("TRACE: In blockMe\n");
 	if (DEBUG)		
 		USLOSS_Console("DEBUG: Process being blocked (%d)\n", current_pid);
+
 	int old_state = disable_interrupts();
 	PCB* process_ptr = &process_table[getSlot(current_pid)];
 	process_ptr->process_state = PROC_STATE_BLOCKED;
@@ -753,6 +736,11 @@ Return Value:
 	0: Otherwise
 */
 int unblockProc(int pid) {
+	if(get_mode()!=1){
+		USLOSS_Console("ERROR: Someone attempted to call unblockProc while in user mode!\n");
+		USLOSS_Halt(1);
+	}
+
 	if (TRACE || DEBUG) 
 		USLOSS_Console("DEBUG: In unblockProc (%d)\n", pid);
 	if (DEBUG)
@@ -778,43 +766,16 @@ int unblockProc(int pid) {
 			next_process->next_in_queue = process_ptr;
 		}
 	}
+	else{
+		// Process was not blocked or does not exist
+		return -2;
+	}
 
 	dispatcher();
 	restore_interrupts(old_state);	
 	return 0;
 }
 
-int unblock(int pid) {
-        if (TRACE || DEBUG)
-                USLOSS_Console("DEBUG: In unblockProc (%d)\n", pid);
-        if (DEBUG)
-                dumpProcesses();
-	int old_state = disable_interrupts();
-        PCB* process_ptr = &process_table[getSlot(pid)];
-        if (process_ptr->process_state == PROC_STATE_BLOCKED) {
-                /*if (process_ptr->status <= 10) {
-                        USLOSS_Console("ERROR: Block status less than 10\n");
-                        return UNBLOCK_STATUS_ERROR;
-                }*/
-                process_ptr->process_state = PROC_STATE_READY;
-                process_ptr->status = 0;
-
-                // Put unblocked process back in the run queue
-                PCB* next_process = run_queue[process_ptr->priority-1];
-                if (next_process == NULL) {
-                        run_queue[process_ptr->priority-1] = process_ptr;
-                } else {
-                        while (next_process->next_in_queue != NULL) {
-                                next_process = next_process->next_in_queue;
-                        }
-                        next_process->next_in_queue = process_ptr;
-                }
-        }
-
-        dispatcher();
-        restore_interrupts(old_state);
-        return 0;
-}
 /*
 Reads the stored value for the start time for the current process
 
@@ -825,6 +786,10 @@ Return Value:
 	Returns the start time for the current running process (current_start_time)
 */
 int readCurStartTime(void) {
+	if(get_mode()!=1){
+		USLOSS_Console("ERROR: Someone attempted to call readCurStartTime while in user mode!\n");
+		USLOSS_Halt(1);
+	}
 	return process_table[getSlot(current_pid)].start_time;
 }
 
@@ -838,6 +803,10 @@ Args: None
 Return Value: None
 */
 void timeSlice(void) {
+	if(get_mode()!=1){
+		USLOSS_Console("ERROR: Someone attempted to call timeSlice while in user mode!\n");
+		USLOSS_Halt(1);
+	}
 	int old_state = disable_interrupts();
 	int current_timeslice = currentTime() - readCurStartTime();
 	if(current_timeslice >= 80){
@@ -856,6 +825,10 @@ Return Value:
 	The total time (in ms) consumed by a process, across all of the times it has been dispatched since it was created.
 */
 int readtime(void) {
+	if(get_mode()!=1){
+		USLOSS_Console("ERROR: Someone attempted to call readtime while in user mode!\n");
+		USLOSS_Halt(1);
+	}
 	return currentTime() - readCurStartTime();
 }
 
@@ -870,6 +843,10 @@ Return Value:
 	The wall-clock time (in ms)
 */
 int currentTime(void) {
+	if(get_mode()!=1){
+		USLOSS_Console("ERROR: Someone attempted to call currentTime while in user mode!\n");
+		USLOSS_Halt(1);
+	}
 	int old_state = disable_interrupts();
 	int retval;
 	
@@ -878,6 +855,8 @@ int currentTime(void) {
 	restore_interrupts(old_state);
 	return retval;
 }
+
+// ---------------------- Helper functions ----------------------
 
 /*
 Returns a new PID for a process. Checks for mode, as user cannot do this.
@@ -902,8 +881,6 @@ int get_new_pid() {
  */
 int getSlot(int pid){
 	int slot = pid%MAXPROC;
-	//if (slot < 0)
-	//	slot += MAXPROC;
 	return slot;
 }
 
@@ -969,7 +946,7 @@ void enable_interrupts(){
 // Used with permission from Prof. Russ Lewis in the spec
 static void clock_handler(int dev,void *arg) {
 	/* make sure to call this first, before timeSlice(), since we want to do the Phase 2 
-     * related work even if process(es) are chewing up lots of CPU
+    	 * related work even if process(es) are chewing up lots of CPU
 	 */
 	phase2_clockHandler();
 
@@ -977,12 +954,88 @@ static void clock_handler(int dev,void *arg) {
 	timeSlice();
 
 	/* when we return from the handler, USLOSS automatically re-enables interrupts and disables 
-     * kernel mode (unless we were previously in kernel code). Or I think so. I haven't 
-     * double-checked yet. TODO
-     */
+	* kernel mode (unless we were previously in kernel code). Or I think so. I haven't 
+	* double-checked yet. TODO
+    	*/
 }
 
+/*
+Unblocks a process that was blocked in join or zap. Will be called by another process than
+the blocked process. The newly unblocked process is placed at the end of the run-queue.
+This is simmilar to unblockProc, but does not check if the status code is greater than 10.
 
+Context: Interrupt Context OK
+May Block: No
+May Context Switch: Yes
+Args:
+	pid - The process to unblock
+Return Value:
+	-2: the indicated process was not blocked, or does not exist
+	0: Otherwise
+*/
+int unblock(int pid) {
+	if (TRACE || DEBUG)
+                USLOSS_Console("DEBUG: In unblock (%d)\n", pid);
+	if (DEBUG)
+                dumpProcesses();
+	int old_state = disable_interrupts();
+	PCB* process_ptr = &process_table[getSlot(pid)];
+        if (process_ptr->process_state == PROC_STATE_BLOCKED) {
+                process_ptr->process_state = PROC_STATE_READY;
+                process_ptr->status = 0;
+
+                // Put unblocked process back in the run queue
+                PCB* next_process = run_queue[process_ptr->priority-1];
+                if (next_process == NULL) {
+                        run_queue[process_ptr->priority-1] = process_ptr;
+                } else {
+                        while (next_process->next_in_queue != NULL) {
+                                next_process = next_process->next_in_queue;
+                        }
+                        next_process->next_in_queue = process_ptr;
+                }
+        }
+	else{
+		// Process was not blocked or does not exist
+		return -2;
+	}
+        dispatcher();
+        restore_interrupts(old_state);
+	return 0;
+}
+
+/*
+Wakes up zapper and places it back into the run queue. DOES NOT CALL DISPATCHER (key difference with unblockProc)
+*/
+void notify_zapper(int pid) {	
+	int old_state = disable_interrupts();
+	PCB* process_ptr = &process_table[getSlot(pid)];
+	// Check process is blocked on zap
+	if (process_ptr->status == STATUS_ZAP_BLOCK) {
+
+		// Wake process up from block
+		process_ptr->process_state = PROC_STATE_READY;
+		process_ptr->status = 0;
+		
+		// Place back into run queue
+		PCB* next_process = run_queue[process_ptr->priority-1];
+		if (next_process == NULL) {
+			run_queue[process_ptr->priority-1] = process_ptr;
+		} else {
+			while (next_process->next_in_queue != NULL) {
+				next_process = next_process->next_in_queue;
+			}
+		next_process->next_in_queue = process_ptr;
+		}
+	}
+	restore_interrupts(old_state);
+}
+
+/*
+Dispatcher. Searches for the next highest priority function in the run queues and context
+switches to it. The current process is placed at the end of the run queue if it is not 
+blocked.
+*/
 void dispatcher(void) {
 	if (TRACE || DEBUG) {
 		USLOSS_Console("DEBUG: entering dispatcher\n");
@@ -1010,22 +1063,12 @@ void dispatcher(void) {
 				new_process_ptr->next_in_queue = NULL;
 			} else {
 				run_queue[i] = NULL;
-				//run_queue_tail[i] = NULL;
 			}
 	
 			// if not blocked, put old process into the run queue
 			if (current_process_ptr->process_state == PROC_STATE_RUNNING) {
 				current_process_ptr->process_state = PROC_STATE_READY;
 				
-				/*PCB* old_tail = run_queue_tail[current_priority-1];
-				if(old_tail==NULL){
-					run_queue_tail[current_priority-1] = current_process_ptr;
-					run_queue[current_priority-1] = current_process_ptr;
-				}
-				else{
-					old_tail->next_in_queue = current_process_ptr;
-					run_queue_tail[current_priority-1] = current_process_ptr;	
-				}*/
 				PCB* next_process = run_queue[current_process_ptr->priority-1];
 				if (next_process == NULL) {
 					run_queue[current_process_ptr->priority-1] = current_process_ptr;
@@ -1054,81 +1097,6 @@ void dispatcher(void) {
 				dumpProcesses();
 			}
 			
-			USLOSS_ContextSwitch(&current_process_ptr->context, &new_process_ptr->context);
-			return;
-		}
-	}
-
-	if (DEBUG) {
-		USLOSS_Console("DEBUG: dispatcher decides not to switch\n");
-		dumpProcesses();
-	}	
-}
-
-
-/*
-Dispatcher
-*/
-void dispatcher2(void) {
-	if (TRACE || DEBUG) {
-		USLOSS_Console("DEBUG: entering dispatcher\n");
-		dumpProcesses();
-	}
-
-	// Check for the highest priority process that is in the ready list, including the current process
-	// If a process was terminated, look for the next highest process in the run queue
-	// If needing to context switch, save the old context and load up the new one
-
-	int current_priority;	
-	PCB* current_process_ptr = &process_table[getSlot(current_pid)];
-	if (current_process_ptr->process_state == PROC_STATE_TERMINATED || current_process_ptr->process_state == PROC_STATE_BLOCKED) {
-		current_priority = MIN_PRIORITY;
-	} else {
-		current_priority = current_process_ptr->priority;
-	}
-
-	for (int i = 0; i < current_priority; i++) {
-		if (run_queue[i] != NULL) {
-			// Take new process from run queue	
-			PCB* new_process_ptr = run_queue[i];	
-			if (new_process_ptr->next_in_queue != NULL) {
-				run_queue[i] = new_process_ptr->next_in_queue;
-				new_process_ptr->next_in_queue = NULL;
-			} else {
-				run_queue[i] = NULL;
-			}
-	
-			// if not blocked, put old process into the run queue
-			if (current_process_ptr->process_state == PROC_STATE_RUNNING) {
-				current_process_ptr->process_state = PROC_STATE_READY;
-
-				PCB* next_process = run_queue[current_process_ptr->priority-1];
-				if (next_process == NULL) {
-					run_queue[current_process_ptr->priority-1] = current_process_ptr;
-				} else {
-					while (next_process->next_in_queue != NULL) {
-						next_process = next_process->next_in_queue;
-					}
-					next_process->next_in_queue = current_process_ptr;
-				}	
-			}
- 
-			mmu_flush();
-		
-			// Logging CPU time and switching current pid
-			current_process_ptr->total_time += readtime();
-			current_pid = new_process_ptr->pid;
-			// Change process states
-			if (new_process_ptr->process_state == PROC_STATE_READY) {
-				new_process_ptr->process_state = PROC_STATE_RUNNING;
-			}
-			new_process_ptr->start_time = currentTime();  
-
-			if (DEBUG) {
-				USLOSS_Console("DEBUG: Leaving dispatcher\n");
-				dumpProcesses();
-			}
-
 			USLOSS_ContextSwitch(&current_process_ptr->context, &new_process_ptr->context);
 			return;
 		}
